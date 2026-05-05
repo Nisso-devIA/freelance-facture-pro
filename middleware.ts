@@ -3,9 +3,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export async function middleware(req: NextRequest) {
-  let response = NextResponse.next({
-    request: req,
-  })
+  let response = NextResponse.next({ request: req })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,9 +16,7 @@ export async function middleware(req: NextRequest) {
         setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
           cookiesToSet.forEach(({ name, value, options }) => {
             req.cookies.set(name, value)
-            response = NextResponse.next({
-              request: req,
-            })
+            response = NextResponse.next({ request: req })
             response.cookies.set(name, value, options)
           })
         },
@@ -37,12 +33,13 @@ export async function middleware(req: NextRequest) {
     req.nextUrl.pathname.startsWith(path)
   )
 
+  // Pas connecté → login (corrigé)
   if (isProtectedPath && !session) {
-    const redirectUrl = new URL('/auth/login', req.url)
-    return NextResponse.redirect(redirectUrl)
+    return NextResponse.redirect(new URL('/login', req.url))
   }
 
-  if (session && req.nextUrl.pathname.startsWith('/auth')) {
+  // Déjà connecté et sur login → dashboard
+  if (session && req.nextUrl.pathname === '/login') {
     return NextResponse.redirect(new URL('/dashboard', req.url))
   }
 
@@ -50,7 +47,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 }
