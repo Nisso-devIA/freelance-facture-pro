@@ -11,17 +11,29 @@ export default function Dashboard() {
   const supabase = createClientComponentClient()
 
   const fetchInvoices = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setLoading(false)
+        return
+      }
 
-    const { data } = await supabase
-      .from('invoices')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
+      const { data, error } = await supabase
+        .from('invoices')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
 
-    setInvoices(data || [])
-    setLoading(false)
+      if (error) {
+        console.error('Erreur Supabase:', error)
+      } else {
+        setInvoices(data || [])
+      }
+    } catch (error) {
+      console.error('Erreur fetch invoices:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
