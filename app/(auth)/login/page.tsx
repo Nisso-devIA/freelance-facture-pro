@@ -1,73 +1,106 @@
 ﻿'use client'
+
 import { useState } from 'react'
 import { createClientComponentClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
-export default function LoginPage() {
+export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
+  const [error, setError] = useState<string | null>(null)
   const supabase = createClientComponentClient()
+  const router = useRouter()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setError(null)
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
 
     if (error) {
-      alert('❌ ' + error.message)
+      setError(error.message)
     } else {
       router.push('/dashboard')
+      router.refresh()
+    }
+    setLoading(false)
+  }
+
+  const handleMagicLink = async () => {
+    if (!email) return alert('Entre ton email enculé')
+    setLoading(true)
+    setError(null)
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        // BYPASS CALLBACK → direct dashboard (le plus fiable)
+        emailRedirectTo: `${location.origin}/dashboard`
+      }
+    })
+
+    if (error) {
+      setError(error.message)
+    } else {
+      alert('✅ Magic link envoyé dans ta boîte mail ! Clique dessus, tu arrives direct sur le dashboard.')
     }
     setLoading(false)
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-6">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-white text-black rounded-3xl text-5xl font-black mb-6 shadow-xl">
-            FP
-          </div>
-          <h1 className="text-5xl font-bold tracking-tight">Connexion</h1>
-          <p className="text-zinc-400 mt-3 text-lg">Accède à ton espace facturation pro</p>
-        </div>
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center px-6">
+      <div className="max-w-md w-full bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-10">
+        <h1 className="text-5xl font-bold text-white tracking-tighter mb-2">Connexion</h1>
+        <p className="text-zinc-400 mb-8">Accède à ton dashboard factures</p>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-10 shadow-2xl">
-          <form onSubmit={handleLogin} className="space-y-6">
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-zinc-950 border border-zinc-700 rounded-2xl px-6 py-5 text-lg focus:border-white focus:outline-none transition"
-              required
-            />
-            <input
-              type="password"
-              placeholder="Mot de passe"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-zinc-950 border border-zinc-700 rounded-2xl px-6 py-5 text-lg focus:border-white focus:outline-none transition"
-              required
-            />
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-white hover:bg-zinc-100 text-black font-bold py-5 rounded-2xl text-xl transition disabled:opacity-70"
-            >
-              {loading ? 'Connexion...' : 'Se connecter'}
-            </button>
-          </form>
-        </div>
+        <form onSubmit={handleLogin} className="space-y-6">
+          <input
+            type="email"
+            placeholder="ton@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full bg-zinc-950 border border-white/10 rounded-2xl px-6 py-5 text-white focus:border-white outline-none"
+            required
+          />
+          <input
+            type="password"
+            placeholder="Mot de passe"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full bg-zinc-950 border border-white/10 rounded-2xl px-6 py-5 text-white focus:border-white outline-none"
+            required
+          />
 
-        <p className="text-center mt-8 text-zinc-500">
+          {error && <p className="text-red-400 text-sm">{error}</p>}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-white text-black font-bold py-5 rounded-2xl text-xl hover:brightness-110 transition disabled:opacity-70"
+          >
+            {loading ? 'Connexion...' : 'Se connecter'}
+          </button>
+        </form>
+
+        <button
+          onClick={handleMagicLink}
+          disabled={loading}
+          className="w-full mt-4 text-blue-400 hover:text-blue-300 py-3 text-sm underline"
+        >
+          {loading ? 'Envoi en cours...' : 'Envoyer un magic link'}
+        </button>
+
+        <p className="text-center text-zinc-500 text-sm mt-8">
           Pas encore de compte ?{' '}
-          <a href="/register" className="text-blue-400 hover:text-blue-500 font-medium">
+          <Link href="/auth/register" className="text-white hover:underline">
             Créer un compte
-          </a>
+          </Link>
         </p>
       </div>
     </div>
