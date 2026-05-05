@@ -40,16 +40,11 @@ export default function Login() {
 
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: {
-        emailRedirectTo: `${location.origin}/dashboard`
-      }
+      options: { emailRedirectTo: `${location.origin}/dashboard` }
     })
 
-    if (error) {
-      setError(error.message)
-    } else {
-      alert('✅ Magic link envoyé ! Clique sur le lien dans ton mail.')
-    }
+    if (error) setError(error.message)
+    else alert('✅ Magic link envoyé ! Clique dans ton mail.')
     setLoading(false)
   }
 
