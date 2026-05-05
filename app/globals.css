@@ -1,0 +1,44 @@
+﻿@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'Inter', system_ui, sans-serif;
+  }
+}
+
+@layer components {
+  .glass {
+    background: rgba(9, 9, 11, 0.7);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .card-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  }
+
+  .input-focus {
+    transition: all 0.2s ease;
+  }
+  
+  .input-focus:focus {
+    border-color: #fff;
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.1);
+    transform: scale(1.02);
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    background: linear-gradient(to right, #fff, #a1a1aa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
