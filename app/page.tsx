@@ -1,7 +1,7 @@
 'use client'
 
+import Hero from '@/components/Hero'
 import Navbar from '@/components/Navbar'
-import Hero from '../components/Hero'     // ← Import relatif qui marche à tous les coups
 
 export default function Home() {
   return (
@@ -9,7 +9,7 @@ export default function Home() {
       <Navbar />
       <Hero />
       
-      <footer className="py-10 text-center text-xs text-zinc-500 border-t border-white/10">
+      <footer className="py-10 text-center text-xs text-zinc-500 border-t border-white/10 mt-auto">
         © ShadowForge Inc • Freelance Facture Pro
       </footer>
     </div>
