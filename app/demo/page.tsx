@@ -1,67 +1,71 @@
 'use client'
 
-import { useState, useCallback } from 'react'
-import { InvoiceForm } from '@/components/InvoiceForm'
-import { InvoiceTable } from '@/components/InvoiceTable'
-import Navbar from '@/components/Navbar'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { InvoiceForm } from '@/components/InvoiceForm'   // ← CORRIGÉ (avec {})
+import { InvoiceTable } from '@/components/InvoiceTable' // ← CORRIGÉ (avec {})
 
-interface Invoice {
-  id: string
-  number: string
-  client_name: string
-  client_email?: string
-  amount: number
-  status: 'draft' | 'sent' | 'paid' | 'overdue'
-  created_at: string
-  pdf_url?: string
-  [key: string]: any
-}
+export default function DemoPage() {
+  const router = useRouter()
+  const [remaining, setRemaining] = useState(5)
+  const [limitReached, setLimitReached] = useState(false)
+  const [invoices, setInvoices] = useState<any[]>([])
 
-export default function DemoDashboard() {
-  const [invoices, setInvoices] = useState<Invoice[]>([])
+  useEffect(() => {
+    fetch('/api/demo-limit')
+      .then(r => r.json())
+      .then(data => {
+        setRemaining(data.remaining)
+        setLimitReached(data.limitReached)
+        if (data.limitReached) router.push('/register')
+      })
+  }, [router])
 
-  const addDemoInvoice = useCallback((newInvoice: any) => {
-    const invoice: Invoice = {
-      id: 'demo-' + Date.now(),
-      number: newInvoice.number || 'FAC-' + Date.now().toString().slice(-8),
-      client_name: newInvoice.client_name || 'Client Démo',
-      client_email: newInvoice.client_email,
-      amount: newInvoice.amount || 0,
-      status: 'sent',
-      created_at: new Date().toISOString(),
-      ...newInvoice,
-    }
-    setInvoices(prev => [invoice, ...prev])
-  }, [])
+  const handleDemoAction = async () => {
+    await fetch('/api/demo-limit', { method: 'POST' })
+    const res = await fetch('/api/demo-limit')
+    const data = await res.json()
+    setRemaining(data.remaining)
+    if (data.remaining <= 0) router.push('/register')
+  }
 
-  const deleteDemoInvoice = useCallback((id: string) => {
-    setInvoices(prev => prev.filter(inv => inv.id !== id))
-  }, [])
+  if (limitReached) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <h2 className="text-4xl font-bold mb-4">Limite atteinte (5/5)</h2>
+          <p className="text-zinc-400 mb-8">Tu as utilisé toutes tes démos gratuites.</p>
+          <a href="/register" className="inline-block bg-white text-black px-10 py-4 rounded-2xl font-bold hover:scale-105 transition">
+            Créer un compte gratuit → Illimité
+          </a>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-zinc-950">
-      <Navbar />
       <div className="max-w-6xl mx-auto px-6 py-12">
-        <div className="mb-12">
-          <div className="inline-flex items-center gap-3 bg-amber-500/10 border border-amber-500/30 text-amber-400 px-6 py-2 rounded-full mb-4">
-            <div className="w-3 h-3 bg-amber-500 rounded-full animate-pulse"></div>
-            <span className="text-sm font-medium">MODE DÉMO — Tout est effacé au rechargement</span>
+        <div className="mb-8 flex justify-between items-center">
+          <h1 className="text-5xl font-bold tracking-tighter">Mode Démo</h1>
+          <div className="bg-white/10 px-5 py-2 rounded-full text-sm">
+            {remaining} utilisation{remaining > 1 ? 's' : ''} restante{remaining > 1 ? 's' : ''}
           </div>
-          <h1 className="text-6xl font-bold tracking-tighter text-white">Dashboard Démo</h1>
-          <p className="text-zinc-400 text-xl mt-3">Testez la création de factures sans compte</p>
         </div>
 
         <InvoiceForm 
+          onSuccess={handleDemoAction}
           demoMode={true}
-          onDemoCreate={addDemoInvoice}
+          onDemoCreate={(newInvoice: any) => {
+            setInvoices(prev => [newInvoice, ...prev])
+          }}
         />
-
+        
         <InvoiceTable 
           invoices={invoices} 
-          loading={false}
-          onRefresh={() => {}}
+          loading={false} 
+          onRefresh={() => {}} 
           demoMode={true}
-          onDemoDelete={deleteDemoInvoice}
         />
       </div>
     </div>
