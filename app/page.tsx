@@ -13,34 +13,25 @@ export default function Home() {
   useEffect(() => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        router.push('/dashboard')
-      }
+      if (session) router.push('/dashboard')
     }
     checkSession()
   }, [supabase, router])
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white flex flex-col">
-      {/* NAVBAR */}
       <nav className="border-b border-white/10">
         <div className="max-w-6xl mx-auto px-6 py-6 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-white rounded-2xl flex items-center justify-center text-black font-bold text-xl">F</div>
             <span className="text-2xl font-bold tracking-tighter">Freelance Facture</span>
           </div>
-          
-          {/* BOUTON HAUT À DROITE → CORRIGÉ */}
-          <Link
-            href="/login"
-            className="px-8 py-3 bg-white text-black font-bold rounded-2xl hover:bg-zinc-200 transition"
-          >
+          <Link href="/login" className="px-8 py-3 bg-white text-black font-bold rounded-2xl hover:bg-zinc-200 transition">
             Se connecter
           </Link>
         </div>
       </nav>
 
-      {/* HERO */}
       <div className="flex-1 flex items-center max-w-6xl mx-auto px-6 py-20">
         <div className="max-w-2xl">
           <div className="inline-flex items-center gap-2 bg-white/5 px-4 py-2 rounded-3xl mb-6">
@@ -54,20 +45,19 @@ export default function Home() {
           </h1>
 
           <p className="text-2xl text-zinc-400 mb-10">
-            Crée, génère le PDF, envoie par email.<br />
+            Crée, PDF, email.<br />
             Tout automatisé. Zéro prise de tête.
           </p>
 
           <div className="flex items-center gap-4">
-            {/* BOUTON COMMENCER → CORRIGÉ */}
+            {/* BOUTON COMMENCER GRATUITEMENT → DEMO MODE */}
             <Link
-              href="/login"
+              href="/demo"
               className="px-10 py-5 bg-white text-black font-bold text-xl rounded-3xl hover:brightness-110 transition flex items-center gap-3"
             >
               Commencer gratuitement →
             </Link>
-            
-            {/* BOUTON VOIR LE DASHBOARD → CORRIGÉ */}
+
             <Link
               href="/login"
               className="px-8 py-5 border border-white/30 text-white font-medium rounded-3xl hover:bg-white/5 transition"
@@ -78,7 +68,7 @@ export default function Home() {
 
           <p className="text-zinc-500 text-sm mt-8 flex items-center gap-2">
             <span className="text-green-400">✓</span>
-            Pas de carte bleue • Pas d’engagement
+            Mode démo : tout est effacé au rechargement
           </p>
         </div>
       </div>
