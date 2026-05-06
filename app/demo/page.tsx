@@ -1,29 +1,18 @@
 'use client'
 
-import Link from 'next/link'
-
-export default function Home() {
+export default function Login() {
   return (
-    <div className="min-h-screen bg-zinc-950 text-white flex flex-col items-center justify-center p-6">
-      <div className="text-center max-w-md">
-        <h1 className="text-6xl font-bold mb-8">Freelance Facture</h1>
-        <p className="text-xl text-zinc-400 mb-12">Factures pros en 30 secondes</p>
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <div className="max-w-md w-full bg-zinc-900 p-10 rounded-3xl border border-white/10">
+        <h1 className="text-4xl font-bold text-white mb-8">Connexion</h1>
+        <p className="text-zinc-400 mb-8">Page de login (test)</p>
         
-        <div className="space-y-4">
-          <Link
-            href="/demo"
-            className="block w-full px-10 py-6 bg-white text-black font-bold text-2xl rounded-3xl hover:brightness-110 transition"
-          >
-            Commencer gratuitement →
-          </Link>
-          
-          <Link
-            href="/login"
-            className="block w-full px-10 py-6 border border-white/40 text-white font-medium text-xl rounded-3xl hover:bg-white/10 transition"
-          >
-            Se connecter
-          </Link>
-        </div>
+        <button 
+          onClick={() => window.location.href = '/dashboard'}
+          className="w-full bg-white text-black py-4 rounded-2xl font-bold text-xl"
+        >
+          Aller au Dashboard (test)
+        </button>
       </div>
     </div>
   )
