@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { InvoiceForm } from '@/components/InvoiceForm'   // ← CORRIGÉ (avec {})
-import { InvoiceTable } from '@/components/InvoiceTable' // ← CORRIGÉ (avec {})
+import { InvoiceForm } from '@/components/InvoiceForm'
+import { InvoiceTable } from '@/components/InvoiceTable'
 
 export default function DemoPage() {
   const router = useRouter()
@@ -31,12 +31,13 @@ export default function DemoPage() {
 
   if (limitReached) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <h2 className="text-4xl font-bold mb-4">Limite atteinte (5/5)</h2>
-          <p className="text-zinc-400 mb-8">Tu as utilisé toutes tes démos gratuites.</p>
-          <a href="/register" className="inline-block bg-white text-black px-10 py-4 rounded-2xl font-bold hover:scale-105 transition">
-            Créer un compte gratuit → Illimité
+      <div className="min-h-screen bg-gradient-to-br from-violet-950 to-fuchsia-950 flex items-center justify-center">
+        <div className="text-center max-w-md px-6">
+          <div className="text-6xl mb-6">⛔</div>
+          <h2 className="text-5xl font-bold tracking-tighter mb-4">Limite atteinte</h2>
+          <p className="text-xl text-zinc-300 mb-10">Tu as utilisé tes 5 démos gratuites.</p>
+          <a href="/register" className="inline-block bg-white text-black px-12 py-5 rounded-3xl font-bold text-xl hover:scale-105 transition-all">
+            Créer un compte → Illimité
           </a>
         </div>
       </div>
@@ -44,23 +45,27 @@ export default function DemoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950">
+    <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-indigo-950 to-violet-950 text-white">
       <div className="max-w-6xl mx-auto px-6 py-12">
-        <div className="mb-8 flex justify-between items-center">
-          <h1 className="text-5xl font-bold tracking-tighter">Mode Démo</h1>
-          <div className="bg-white/10 px-5 py-2 rounded-full text-sm">
-            {remaining} utilisation{remaining > 1 ? 's' : ''} restante{remaining > 1 ? 's' : ''}
+        {/* Header */}
+        <div className="flex justify-between items-center mb-12">
+          <div>
+            <h1 className="text-6xl font-bold tracking-tighter">Mode Démo</h1>
+            <p className="text-zinc-400 mt-2">Essaye gratuitement — 5 factures max</p>
+          </div>
+          
+          <div className="bg-white/10 backdrop-blur-xl px-8 py-3 rounded-3xl border border-white/10 flex items-center gap-3">
+            <div className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse"></div>
+            <span className="font-medium">{remaining} utilisation{remaining > 1 ? 's' : ''} restante{remaining > 1 ? 's' : ''}</span>
           </div>
         </div>
 
         <InvoiceForm 
           onSuccess={handleDemoAction}
           demoMode={true}
-          onDemoCreate={(newInvoice: any) => {
-            setInvoices(prev => [newInvoice, ...prev])
-          }}
+          onDemoCreate={(newInvoice: any) => setInvoices(prev => [newInvoice, ...prev])}
         />
-        
+
         <InvoiceTable 
           invoices={invoices} 
           loading={false} 
