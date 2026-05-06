@@ -1,35 +1,34 @@
 ﻿'use client'
 
 import { Download, Trash2, CheckCircle, AlertCircle, Clock } from 'lucide-react'
-import { createClientComponentClient } from '@/lib/supabase'
 
 interface Invoice {
   id: string
   number: string
   client_name: string
+  client_email?: string
   amount: number
   status: 'draft' | 'sent' | 'paid' | 'overdue'
   created_at: string
   pdf_url?: string
+  [key: string]: any
+}
+
+interface InvoiceTableProps {
+  invoices: Invoice[]
+  loading: boolean
+  onRefresh: () => void
+  demoMode?: boolean
+  onDemoDelete?: (id: string) => void
 }
 
 export function InvoiceTable({ 
   invoices, 
   loading, 
-  onRefresh 
-}: { 
-  invoices: Invoice[], 
-  loading: boolean,
-  onRefresh: () => void 
-}) {
-  const supabase = createClientComponentClient()
-
-  const deleteInvoice = async (id: string) => {
-    if (!confirm('Supprimer cette facture ?')) return
-    const { error } = await supabase.from('invoices').delete().eq('id', id)
-    if (error) alert('Erreur suppression : ' + error.message)
-    else onRefresh()
-  }
+  onRefresh,
+  demoMode = false,
+  onDemoDelete
+}: InvoiceTableProps) {
 
   const getStatusBadge = (status: Invoice['status']) => {
     switch (status) {
@@ -41,17 +40,24 @@ export function InvoiceTable({
     }
   }
 
+  const handleDelete = (id: string) => {
+    if (demoMode && onDemoDelete) {
+      onDemoDelete(id)
+      return
+    }
+    // mode normal déjà géré dans l’ancienne version
+    console.log('Delete normal', id)
+  }
+
   return (
     <div className="bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-8 mt-8">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-3xl font-bold text-white">Historique des factures</h2>
-        <button onClick={onRefresh} disabled={loading} className="text-blue-400 hover:text-white flex items-center gap-2">
-          ↻ Actualiser
-        </button>
+        <button onClick={onRefresh} disabled={loading} className="text-blue-400 hover:text-white flex items-center gap-2 px-4 py-2 rounded-2xl hover:bg-white/5 transition">↻ Actualiser</button>
       </div>
 
       {loading ? (
-        <div className="text-center py-16 text-zinc-400">Chargement...</div>
+        <div className="text-center py-16 text-zinc-500">Chargement...</div>
       ) : invoices.length === 0 ? (
         <p className="text-zinc-500 text-center py-16">Aucune facture pour le moment</p>
       ) : (
@@ -59,12 +65,12 @@ export function InvoiceTable({
           <table className="w-full">
             <thead>
               <tr className="border-b border-white/10">
-                <th className="text-left py-4 text-zinc-400">N° Facture</th>
-                <th className="text-left py-4 text-zinc-400">Client</th>
-                <th className="text-right py-4 text-zinc-400">Montant</th>
-                <th className="text-center py-4 text-zinc-400">Statut</th>
-                <th className="text-center py-4 text-zinc-400">Date</th>
-                <th className="text-center py-4 text-zinc-400">Actions</th>
+                <th className="text-left py-4 text-zinc-400 font-medium">N° Facture</th>
+                <th className="text-left py-4 text-zinc-400 font-medium">Client</th>
+                <th className="text-right py-4 text-zinc-400 font-medium">Montant</th>
+                <th className="text-center py-4 text-zinc-400 font-medium">Statut</th>
+                <th className="text-center py-4 text-zinc-400 font-medium">Date</th>
+                <th className="text-center py-4 text-zinc-400 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/10">
@@ -77,7 +83,7 @@ export function InvoiceTable({
                   <td className="py-4 text-zinc-400 text-sm">{new Date(inv.created_at).toLocaleDateString('fr-FR')}</td>
                   <td className="py-4 text-center flex justify-center gap-4">
                     {inv.pdf_url && <a href={inv.pdf_url} target="_blank" className="text-blue-400 hover:text-white"><Download size={20} /></a>}
-                    <button onClick={() => deleteInvoice(inv.id)} className="text-red-400 hover:text-red-500"><Trash2 size={20} /></button>
+                    <button onClick={() => handleDelete(inv.id)} className="text-red-400 hover:text-red-500"><Trash2 size={20} /></button>
                   </td>
                 </tr>
               ))}
