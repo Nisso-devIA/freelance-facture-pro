@@ -1,9 +1,12 @@
 ﻿import type { Metadata } from 'next'
-import './globals.css'
+import './globals.css'     // ← Changé ici (point + slash)
 
 export const metadata: Metadata = {
   title: 'Facture Pro',
-  description: 'Facturation électronique pro',
+  description: 'Factures professionnelles simples et rapides',
+  icons: {
+    icon: '/favicon.ico',
+  },
 }
 
 export default function RootLayout({
@@ -12,10 +15,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="fr" className="dark">
-      <body className="bg-zinc-950 text-white antialiased">
-        {children}
-      </body>
+    <html lang="fr">
+      <body>{children}</body>
     </html>
   )
 }
