@@ -1,78 +1,94 @@
 'use client'
 
-import { useState } from 'react'
+import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import { createClientComponentClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
-export default function Login() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
+export default function Home() {
   const supabase = createClientComponentClient()
   const router = useRouter()
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()                    // ← C'EST ÇA QUI EMPÊCHE LE 404
-    setLoading(true)
-    setError(null)
-
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-
-    if (authError) {
-      setError(authError.message)
-    } else {
-      router.push('/dashboard')
-      router.refresh()
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        setIsLoggedIn(true)
+        router.push('/dashboard')
+      }
     }
-    setLoading(false)
+    checkSession()
+  }, [supabase, router])
+
+  if (isLoggedIn) {
+    return <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-400">Redirection vers le dashboard...</div>
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center px-6">
-      <div className="max-w-md w-full bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-10">
-        <h1 className="text-5xl font-bold text-white tracking-tighter mb-8">Connexion</h1>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <input
-            type="email"
-            placeholder="ton@email.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full bg-zinc-950 border border-white/10 rounded-2xl px-6 py-5 text-white focus:border-white outline-none"
-            required
-          />
-          <input
-            type="password"
-            placeholder="Mot de passe"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full bg-zinc-950 border border-white/10 rounded-2xl px-6 py-5 text-white focus:border-white outline-none"
-            required
-          />
-
-          {error && <p className="text-red-400 text-sm">{error}</p>}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-white text-black font-bold py-5 rounded-2xl text-xl hover:brightness-110 transition disabled:opacity-70"
+    <div className="min-h-screen bg-zinc-950 text-white flex flex-col">
+      {/* NAVBAR avec bouton haut à droite */}
+      <nav className="border-b border-white/10">
+        <div className="max-w-6xl mx-auto px-6 py-6 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-white rounded-2xl flex items-center justify-center text-black font-bold text-xl">F</div>
+            <span className="text-2xl font-bold tracking-tighter">Freelance Facture</span>
+          </div>
+          
+          {/* BOUTON CONNEXION HAUT À DROITE → CORRIGÉ */}
+          <Link
+            href="/login"
+            className="px-8 py-3 bg-white text-black font-bold rounded-2xl hover:bg-zinc-200 transition"
           >
-            {loading ? 'Connexion en cours...' : 'Se connecter'}
-          </button>
-        </form>
+            Se connecter
+          </Link>
+        </div>
+      </nav>
 
-        <button
-          onClick={() => alert('Magic link à venir (on le rajoute après si tu veux)')}
-          className="w-full mt-6 text-blue-400 hover:text-blue-300 py-3 text-sm underline"
-        >
-          Envoyer un magic link
-        </button>
+      {/* Hero */}
+      <div className="flex-1 flex items-center max-w-6xl mx-auto px-6 py-20">
+        <div className="max-w-2xl">
+          <div className="inline-flex items-center gap-2 bg-white/5 px-4 py-2 rounded-3xl mb-6">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span className="text-sm text-zinc-400">Lancé en 2026 • Prêt à facturer</span>
+          </div>
+
+          <h1 className="text-7xl font-bold tracking-tighter leading-none mb-6">
+            Factures pros.<br />
+            Envoyées en 30 secondes.
+          </h1>
+
+          <p className="text-2xl text-zinc-400 mb-10">
+            Crée, génère le PDF, envoie par email.<br />
+            Tout automatisé. Zéro prise de tête.
+          </p>
+
+          <div className="flex items-center gap-4">
+            <Link
+              href="/login"
+              className="px-10 py-5 bg-white text-black font-bold text-xl rounded-3xl hover:brightness-110 transition flex items-center gap-3"
+            >
+              Commencer gratuitement →
+            </Link>
+            
+            <Link
+              href="/login"
+              className="px-8 py-5 border border-white/30 text-white font-medium rounded-3xl hover:bg-white/5 transition"
+            >
+              Voir le dashboard
+            </Link>
+          </div>
+
+          <p className="text-zinc-500 text-sm mt-8 flex items-center gap-2">
+            <span className="text-green-400">✓</span>
+            Pas de carte bleue • Pas d’engagement
+          </p>
+        </div>
       </div>
+
+      <footer className="border-t border-white/10 py-8 text-center text-zinc-500 text-sm">
+        © ShadowForge Inc • Freelance Facture Pro
+      </footer>
     </div>
   )
 }
