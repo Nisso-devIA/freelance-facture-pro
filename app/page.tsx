@@ -1,7 +1,7 @@
 'use client'
 
-import Hero from '@/components/Hero'
 import Navbar from '@/components/Navbar'
+import Hero from '../components/Hero'     // ← Import relatif qui marche à tous les coups
 
 export default function Home() {
   return (
