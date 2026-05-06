@@ -32,7 +32,7 @@ export default function Dashboard() {
       setError(null)
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        setError("Tu dois être connecté pour voir tes factures, enculé.")
+        setError("Tu dois être connecté pour voir tes factures.")
         return
       }
       const { data, error: supabaseError } = await supabase
@@ -49,15 +49,13 @@ export default function Dashboard() {
     }
   }, [supabase])
 
-  // REALTIME
+  // Realtime
   useEffect(() => {
     fetchInvoices()
 
     const channel = supabase
       .channel('invoices')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, () => {
-        fetchInvoices()
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, fetchInvoices)
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
