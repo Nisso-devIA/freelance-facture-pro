@@ -1,72 +1,52 @@
 'use client'
 
-import { useState, useCallback } from 'react'
-import { InvoiceForm } from '@/components/InvoiceForm'
-import { InvoiceTable } from '@/components/InvoiceTable'
-import Navbar from '@/components/Navbar'
-
-interface Invoice {
-  id: string
-  number: string
-  client_name: string
-  client_email?: string
-  amount: number
-  status: 'draft' | 'sent' | 'paid' | 'overdue'
-  created_at: string
-  pdf_url?: string
-  [key: string]: any
-}
-
-export default function DemoDashboard() {
-  const [invoices, setInvoices] = useState<Invoice[]>([])
-  const [loading, setLoading] = useState(false)
-
-  const addDemoInvoice = useCallback((newInvoice: any) => {
-    const invoice: Invoice = {
-      id: 'demo-' + Date.now(),
-      number: newInvoice.number || 'FAC-' + Date.now().toString().slice(-8),
-      client_name: newInvoice.client_name || 'Client Démo',
-      client_email: newInvoice.client_email,
-      amount: newInvoice.amount || 0,
-      status: 'sent' as const,
-      created_at: new Date().toISOString(),
-      ...newInvoice, // pour les autres champs (items, etc.)
-    }
-    setInvoices(prev => [invoice, ...prev])
-  }, [])
-
-  const deleteDemoInvoice = useCallback((id: string) => {
-    setInvoices(prev => prev.filter(inv => inv.id !== id))
-  }, [])
-
-  const handleRefresh = () => {} // pas utile en démo
-
+export default function Home() {
   return (
-    <div className="min-h-screen bg-zinc-950">
-      <Navbar />
-      <div className="max-w-6xl mx-auto px-6 py-12">
-        <div className="mb-12">
-          <div className="inline-flex items-center gap-3 bg-white/5 px-6 py-2 rounded-full mb-4">
-            <div className="w-3 h-3 bg-amber-500 rounded-full animate-pulse"></div>
-            <span className="text-sm text-zinc-400">MODE DÉMO • Données effacées au rechargement</span>
+    <div className="min-h-screen bg-zinc-950 text-white flex flex-col">
+      <nav className="border-b border-white/10">
+        <div className="max-w-6xl mx-auto px-6 py-6 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-white rounded-2xl flex items-center justify-center text-black font-bold text-xl">F</div>
+            <span className="text-2xl font-bold tracking-tighter">Freelance Facture</span>
           </div>
-          <h1 className="text-6xl font-bold tracking-tighter text-white">Dashboard Démo</h1>
-          <p className="text-zinc-400 text-xl mt-3">Teste la création de factures (rien n’est sauvegardé)</p>
+          
+          <a
+            href="/login"
+            className="px-8 py-3 bg-white text-black font-bold rounded-2xl hover:bg-zinc-200 transition"
+          >
+            Se connecter
+          </a>
         </div>
+      </nav>
 
-        <InvoiceForm 
-          onSuccess={() => {}} 
-          demoMode={true}
-          onDemoCreate={addDemoInvoice}
-        />
+      <div className="flex-1 flex items-center max-w-6xl mx-auto px-6 py-20">
+        <div className="max-w-2xl">
+          <h1 className="text-7xl font-bold tracking-tighter leading-none mb-6">
+            Factures pros.<br />
+            Envoyées en 30 secondes.
+          </h1>
 
-        <InvoiceTable 
-          invoices={invoices} 
-          loading={loading} 
-          onRefresh={handleRefresh}
-          demoMode={true}
-          onDemoDelete={deleteDemoInvoice}
-        />
+          <p className="text-2xl text-zinc-400 mb-10">
+            Crée, génère le PDF, envoie par email.<br />
+            Tout automatisé.
+          </p>
+
+          <div className="flex items-center gap-4">
+            <a
+              href="/demo"
+              className="px-10 py-5 bg-white text-black font-bold text-xl rounded-3xl hover:brightness-110 transition"
+            >
+              Commencer gratuitement →
+            </a>
+
+            <a
+              href="/login"
+              className="px-8 py-5 border border-white/30 text-white font-medium rounded-3xl hover:bg-white/5 transition"
+            >
+              Voir le dashboard
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   )
