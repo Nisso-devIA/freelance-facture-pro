@@ -1,94 +1,111 @@
 'use client'
 
-import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { createClientComponentClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
-export default function Home() {
+export default function Login() {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
   const supabase = createClientComponentClient()
   const router = useRouter()
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
 
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        setIsLoggedIn(true)
-        router.push('/dashboard')
+  // Connexion classique email/mdp
+  const handleEmailLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+
+    const form = e.currentTarget
+    const email = form.email.value
+    const password = form.password.value
+
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (authError) setError(authError.message)
+    else router.push('/dashboard')
+
+    setLoading(false)
+  }
+
+  // Connexion avec Google
+  const handleGoogleLogin = async () => {
+    setLoading(true)
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${location.origin}/dashboard`
       }
-    }
-    checkSession()
-  }, [supabase, router])
-
-  if (isLoggedIn) {
-    return <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-400">Redirection vers le dashboard...</div>
+    })
+    if (error) setError(error.message)
+    setLoading(false)
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white flex flex-col">
-      {/* NAVBAR avec bouton haut à droite */}
-      <nav className="border-b border-white/10">
-        <div className="max-w-6xl mx-auto px-6 py-6 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-white rounded-2xl flex items-center justify-center text-black font-bold text-xl">F</div>
-            <span className="text-2xl font-bold tracking-tighter">Freelance Facture</span>
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center px-6">
+      <div className="max-w-md w-full bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-10">
+        <h1 className="text-5xl font-bold text-white tracking-tighter mb-2">Connexion</h1>
+        <p className="text-zinc-400 mb-8">Accède à ton dashboard factures</p>
+
+        {/* Bouton Google */}
+        <button
+          onClick={handleGoogleLogin}
+          disabled={loading}
+          className="w-full flex items-center justify-center gap-3 bg-white text-black py-5 rounded-2xl font-semibold text-lg hover:brightness-110 transition mb-6"
+        >
+          <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
+          Se connecter avec Google
+        </button>
+
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-white/10"></div>
           </div>
-          
-          {/* BOUTON CONNEXION HAUT À DROITE → CORRIGÉ */}
-          <Link
-            href="/login"
-            className="px-8 py-3 bg-white text-black font-bold rounded-2xl hover:bg-zinc-200 transition"
+          <div className="relative flex justify-center text-xs text-zinc-500">
+            ou
+          </div>
+        </div>
+
+        {/* Formulaire email / mot de passe */}
+        <form onSubmit={handleEmailLogin} className="space-y-6">
+          <input
+            name="email"
+            type="email"
+            placeholder="ton@email.com"
+            className="w-full bg-zinc-950 border border-white/10 rounded-2xl px-6 py-5 text-white focus:border-white outline-none"
+            required
+          />
+          <input
+            name="password"
+            type="password"
+            placeholder="Mot de passe"
+            className="w-full bg-zinc-950 border border-white/10 rounded-2xl px-6 py-5 text-white focus:border-white outline-none"
+            required
+          />
+
+          {error && <p className="text-red-400 text-sm">{error}</p>}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-white/10 hover:bg-white/20 border border-white/30 text-white font-bold py-5 rounded-2xl transition"
           >
-            Se connecter
+            {loading ? 'Connexion...' : 'Se connecter avec email'}
+          </button>
+        </form>
+
+        <p className="text-center text-zinc-500 text-sm mt-8">
+          Pas encore de compte ?{' '}
+          <Link href="/register" className="text-white hover:underline">
+            Créer un compte
           </Link>
-        </div>
-      </nav>
-
-      {/* Hero */}
-      <div className="flex-1 flex items-center max-w-6xl mx-auto px-6 py-20">
-        <div className="max-w-2xl">
-          <div className="inline-flex items-center gap-2 bg-white/5 px-4 py-2 rounded-3xl mb-6">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            <span className="text-sm text-zinc-400">Lancé en 2026 • Prêt à facturer</span>
-          </div>
-
-          <h1 className="text-7xl font-bold tracking-tighter leading-none mb-6">
-            Factures pros.<br />
-            Envoyées en 30 secondes.
-          </h1>
-
-          <p className="text-2xl text-zinc-400 mb-10">
-            Crée, génère le PDF, envoie par email.<br />
-            Tout automatisé. Zéro prise de tête.
-          </p>
-
-          <div className="flex items-center gap-4">
-            <Link
-              href="/login"
-              className="px-10 py-5 bg-white text-black font-bold text-xl rounded-3xl hover:brightness-110 transition flex items-center gap-3"
-            >
-              Commencer gratuitement →
-            </Link>
-            
-            <Link
-              href="/login"
-              className="px-8 py-5 border border-white/30 text-white font-medium rounded-3xl hover:bg-white/5 transition"
-            >
-              Voir le dashboard
-            </Link>
-          </div>
-
-          <p className="text-zinc-500 text-sm mt-8 flex items-center gap-2">
-            <span className="text-green-400">✓</span>
-            Pas de carte bleue • Pas d’engagement
-          </p>
-        </div>
+        </p>
       </div>
-
-      <footer className="border-t border-white/10 py-8 text-center text-zinc-500 text-sm">
-        © ShadowForge Inc • Freelance Facture Pro
-      </footer>
     </div>
   )
 }
