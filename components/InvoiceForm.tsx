@@ -12,12 +12,17 @@ interface InvoiceItem {
   price: number
 }
 
-export function InvoiceForm({ onSuccess }: { onSuccess: () => void }) {
+interface InvoiceFormProps {
+  onSuccess?: () => void
+  demoMode?: boolean
+  onDemoCreate?: (newInvoice: any) => void
+}
+
+export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: InvoiceFormProps) {
   const [items, setItems] = useState<InvoiceItem[]>([{ description: '', quantity: 1, price: 0 }])
   const [loading, setLoading] = useState(false)
   const supabase = createClientComponentClient()
 
-  // ⚠️ WARNING BLACKHAT : Service Role Key côté client = très risqué (tout le monde peut bypass RLS)
   const serviceSupabase = useMemo(() => createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!
@@ -48,14 +53,31 @@ export function InvoiceForm({ onSuccess }: { onSuccess: () => void }) {
     }
 
     const totalAmount = items.reduce((sum, item) => sum + item.quantity * item.price, 0)
+    const invoiceNumber = 'FAC-' + Date.now().toString().slice(-8)
 
+    // ==================== MODE DÉMO ====================
+    if (demoMode && onDemoCreate) {
+      onDemoCreate({
+        number: invoiceNumber,
+        client_name: clientName,
+        client_email: clientEmail,
+        amount: totalAmount,
+        status: 'sent' as const,
+        items,
+      })
+      alert(`✅ Facture démo ${invoiceNumber} créée (effacée au rechargement)`)
+      setItems([{ description: '', quantity: 1, price: 0 }])
+      setLoading(false)
+      return
+    }
+    // ===================================================
+
+    // Mode normal (Supabase)
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Tu dois être connecté')
 
-      const invoiceNumber = 'FAC-' + Date.now().toString().slice(-8)
       const pdfBlob = await generatePDF({ number: invoiceNumber, client: clientName, items })
-
       const filePath = `${user.id}/${invoiceNumber}.pdf`
 
       const { error: uploadError } = await serviceSupabase.storage
@@ -66,11 +88,10 @@ export function InvoiceForm({ onSuccess }: { onSuccess: () => void }) {
 
       const { data: { publicUrl } } = supabase.storage.from('invoices').getPublicUrl(filePath)
 
-      // FIX : client_name au lieu de client pour matcher ton interface Dashboard
       await supabase.from('invoices').insert({
         user_id: user.id,
         number: invoiceNumber,
-        client_name: clientName,        // ← CORRIGÉ ICI
+        client_name: clientName,
         client_email: clientEmail,
         amount: totalAmount,
         status: 'sent',
@@ -80,11 +101,9 @@ export function InvoiceForm({ onSuccess }: { onSuccess: () => void }) {
 
       await sendInvoiceEmail({ to: clientEmail, clientName, invoiceNumber, amount: totalAmount, pdfUrl: publicUrl })
 
-      alert(`✅ Facture ${invoiceNumber} créée et envoyée avec succès !`)
-
+      alert(`✅ Facture ${invoiceNumber} créée et envoyée !`)
       setItems([{ description: '', quantity: 1, price: 0 }])
-      onSuccess()
-
+      onSuccess?.()
     } catch (err: any) {
       console.error(err)
       alert('❌ ' + (err.message || 'Erreur inconnue'))
@@ -105,26 +124,9 @@ export function InvoiceForm({ onSuccess }: { onSuccess: () => void }) {
       <div className="space-y-4 mb-8">
         {items.map((item, index) => (
           <div key={index} className="flex gap-4 items-end">
-            <input 
-              placeholder="Description" 
-              value={item.description} 
-              onChange={(e) => updateItem(index, 'description', e.target.value)} 
-              className="flex-1 bg-zinc-950/80 border border-white/10 rounded-2xl px-6 py-4" 
-            />
-            <input 
-              type="number" 
-              min="1" 
-              value={item.quantity} 
-              onChange={(e) => updateItem(index, 'quantity', parseFloat(e.target.value) || 1)} 
-              className="w-24 bg-zinc-950/80 border border-white/10 rounded-2xl px-6 py-4 text-center" 
-            />
-            <input 
-              type="number" 
-              step="0.01" 
-              value={item.price} 
-              onChange={(e) => updateItem(index, 'price', parseFloat(e.target.value) || 0)} 
-              className="w-32 bg-zinc-950/80 border border-white/10 rounded-2xl px-6 py-4" 
-            />
+            <input placeholder="Description" value={item.description} onChange={(e) => updateItem(index, 'description', e.target.value)} className="flex-1 bg-zinc-950/80 border border-white/10 rounded-2xl px-6 py-4" />
+            <input type="number" min="1" value={item.quantity} onChange={(e) => updateItem(index, 'quantity', parseFloat(e.target.value) || 1)} className="w-24 bg-zinc-950/80 border border-white/10 rounded-2xl px-6 py-4 text-center" />
+            <input type="number" step="0.01" value={item.price} onChange={(e) => updateItem(index, 'price', parseFloat(e.target.value) || 0)} className="w-32 bg-zinc-950/80 border border-white/10 rounded-2xl px-6 py-4" />
             <button type="button" onClick={() => removeItem(index)} className="text-red-500 hover:text-red-600 text-2xl px-3">✕</button>
           </div>
         ))}
@@ -132,12 +134,8 @@ export function InvoiceForm({ onSuccess }: { onSuccess: () => void }) {
 
       <button type="button" onClick={addItem} className="text-blue-400 hover:text-blue-500 mb-6 text-lg">+ Ajouter une ligne</button>
 
-      <button 
-        onClick={handleSubmit} 
-        disabled={loading} 
-        className="w-full bg-gradient-to-r from-white to-zinc-200 text-black font-bold py-5 rounded-2xl text-xl hover:brightness-110 disabled:opacity-70 transition"
-      >
-        {loading ? 'Création & Envoi en cours...' : 'Créer & Envoyer la Facture'}
+      <button onClick={handleSubmit} disabled={loading} className="w-full bg-gradient-to-r from-white to-zinc-200 text-black font-bold py-5 rounded-2xl text-xl hover:brightness-110 disabled:opacity-70 transition">
+        {loading ? 'Création en cours...' : demoMode ? 'Créer en mode démo' : 'Créer & Envoyer la Facture'}
       </button>
     </div>
   )
