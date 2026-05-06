@@ -1,13 +1,15 @@
 import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Tu peux ajouter d’autres options ici plus tard (images, headers, etc.)
   webpack: (config) => {
-    // Force l'alias @/ pour webpack (le vrai fix)
     config.resolve.alias = {
       ...config.resolve.alias,
-      '@': path.resolve('./'),
+      '@': path.resolve(__dirname),
     }
     return config
   },
