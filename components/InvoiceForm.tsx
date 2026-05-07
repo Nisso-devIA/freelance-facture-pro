@@ -1,6 +1,6 @@
 ﻿'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { createClientComponentClient } from '@/lib/supabase'
 import { createClient } from '@supabase/supabase-js'
 import { generatePDF } from '@/lib/pdf-template'
@@ -22,13 +22,30 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
   const [items, setItems] = useState<InvoiceItem[]>([{ description: '', quantity: 1, price: 0 }])
   const [loading, setLoading] = useState(false)
 
-  const [emitter] = useState({
+  // ÉMETTEUR - modifiable + sauvegarde localStorage
+  const [emitter, setEmitter] = useState({
     name: "Alexandre Martin",
     address: "123 Rue du Code, 75002 Paris",
     siret: "12345678901234",
     tva: "FR12345678901"
   })
 
+  // Charger émetteur sauvegardé
+  useEffect(() => {
+    const savedEmitter = localStorage.getItem('invoiceEmitter')
+    if (savedEmitter) {
+      setEmitter(JSON.parse(savedEmitter))
+    }
+  }, [])
+
+  // Sauvegarder émetteur à chaque modification
+  const updateEmitter = (field: keyof typeof emitter, value: string) => {
+    const newEmitter = { ...emitter, [field]: value }
+    setEmitter(newEmitter)
+    localStorage.setItem('invoiceEmitter', JSON.stringify(newEmitter))
+  }
+
+  // Client
   const [clientType, setClientType] = useState<'particulier' | 'pro'>('particulier')
   const [client, setClient] = useState({
     name: "",
@@ -59,54 +76,67 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
   const handleSubmit = async () => {
     setLoading(true)
 
-    try {
-      if (!client.name || !client.email || !client.address) {
-        alert('❌ Nom, email et adresse du client sont obligatoires')
-        return
-      }
-      if (clientType === 'pro' && (!client.siret || !client.tva)) {
-        alert('❌ Pour un professionnel, SIRET et TVA sont obligatoires')
-        return
-      }
+    if (!emitter.name || !emitter.address) {
+      alert('❌ Nom et adresse de l\'émetteur sont obligatoires')
+      setLoading(false)
+      return
+    }
 
-      const totalAmount = items.reduce((sum, item) => sum + item.quantity * item.price, 0)
-      const invoiceNumber = 'FAC-' + Date.now().toString().slice(-8)
+    if (!client.name || !client.email || !client.address) {
+      alert('❌ Nom, email et adresse du client sont obligatoires')
+      setLoading(false)
+      return
+    }
 
-      const invoiceData = {
-        number: invoiceNumber,
-        emitter,
-        client: { ...client, type: clientType },
-        amount: totalAmount,
-        status: 'sent' as const,
-        created_at: new Date().toISOString(),
-        items,
-      }
+    if (clientType === 'pro' && (!client.siret || !client.tva)) {
+      alert('❌ Pour un professionnel, SIRET et TVA sont obligatoires')
+      setLoading(false)
+      return
+    }
 
-      // ==================== MODE DÉMO ====================
-      if (demoMode && onDemoCreate) {
-        onDemoCreate(invoiceData)
-        onSuccess?.(invoiceData)
+    const totalAmount = items.reduce((sum, item) => sum + item.quantity * item.price, 0)
+    const invoiceNumber = 'FAC-' + Date.now().toString().slice(-8)
 
+    const invoiceData = {
+      number: invoiceNumber,
+      emitter,
+      client: { ...client, type: clientType },
+      amount: totalAmount,
+      status: 'sent' as const,
+      created_at: new Date().toISOString(),
+      items,
+    }
+
+    // ==================== MODE DÉMO ====================
+    if (demoMode && onDemoCreate) {
+      onDemoCreate(invoiceData)
+      onSuccess?.(invoiceData)
+
+      try {
         const pdfBlob = await generatePDF(invoiceData)
         const pdfUrl = URL.createObjectURL(pdfBlob)
 
-        try {
-          await sendInvoiceEmail({
-            to: client.email,
-            clientName: client.name,
-            invoiceNumber,
-            amount: totalAmount,
-            pdfUrl
-          })
-          alert(`✅ Facture démo ${invoiceNumber} créée et envoyée !`)
-        } catch (e) {
-          console.error(e)
-          alert(`✅ Facture démo ${invoiceNumber} créée ! (email non envoyé)`)
-        }
-        return
+        await sendInvoiceEmail({
+          to: client.email,
+          clientName: client.name,
+          invoiceNumber,
+          amount: totalAmount,
+          pdfUrl
+        })
+
+        alert(`✅ Facture démo ${invoiceNumber} créée et envoyée !`)
+      } catch (e) {
+        console.error(e)
+        alert(`✅ Facture démo ${invoiceNumber} créée ! (email non envoyé)`)
       }
 
-      // ==================== MODE NORMAL ====================
+      resetForm()
+      setLoading(false)
+      return
+    }
+
+    // ==================== MODE NORMAL ====================
+    try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("Utilisateur non connecté")
 
@@ -131,12 +161,7 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
       const pdfBlob = await generatePDF(invoiceData)
 
       const fileName = `${invoiceNumber}.pdf`
-      const { error: uploadError } = await serviceSupabase
-        .storage
-        .from('invoices')
-        .upload(fileName, pdfBlob, { contentType: 'application/pdf', upsert: true })
-
-      if (uploadError) throw uploadError
+      await serviceSupabase.storage.from('invoices').upload(fileName, pdfBlob, { contentType: 'application/pdf', upsert: true })
 
       const { data: { publicUrl } } = serviceSupabase.storage.from('invoices').getPublicUrl(fileName)
 
@@ -152,29 +177,52 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
       onSuccess?.(insertedInvoice)
 
     } catch (error: any) {
-      console.error('Erreur création facture:', error)
+      console.error(error)
       alert('Erreur lors de la création : ' + (error.message || 'Erreur inconnue'))
     } finally {
-      // Toujours reset le loading, même en cas d'erreur
+      resetForm()
       setLoading(false)
-      setItems([{ description: '', quantity: 1, price: 0 }])
-      setClient({ name: "", email: "", address: "", siret: "", tva: "" })
     }
+  }
+
+  const resetForm = () => {
+    setItems([{ description: '', quantity: 1, price: 0 }])
+    setClient({ name: "", email: "", address: "", siret: "", tva: "" })
   }
 
   return (
     <div className="glass rounded-3xl p-6 md:p-8">
       <h2 className="text-3xl md:text-4xl font-bold mb-8 text-white tracking-tight">Nouvelle Facture</h2>
 
-      {/* ÉMETTEUR */}
+      {/* ÉMETTEUR MODIFIABLE */}
       <div className="mb-8">
         <h3 className="text-lg font-semibold mb-4 text-white">Émetteur (vous)</h3>
         <div className="grid grid-cols-1 gap-4">
-          <input value={emitter.name} className="input" readOnly />
-          <input value={emitter.address} className="input" readOnly />
+          <input 
+            value={emitter.name} 
+            onChange={(e) => updateEmitter('name', e.target.value)}
+            placeholder="Nom de votre entreprise / Nom complet" 
+            className="input" 
+          />
+          <input 
+            value={emitter.address} 
+            onChange={(e) => updateEmitter('address', e.target.value)}
+            placeholder="Adresse complète" 
+            className="input" 
+          />
           <div className="grid grid-cols-2 gap-4">
-            <input value={emitter.siret} className="input" readOnly />
-            <input value={emitter.tva} className="input" readOnly />
+            <input 
+              value={emitter.siret} 
+              onChange={(e) => updateEmitter('siret', e.target.value)}
+              placeholder="SIRET" 
+              className="input" 
+            />
+            <input 
+              value={emitter.tva} 
+              onChange={(e) => updateEmitter('tva', e.target.value)}
+              placeholder="Numéro TVA" 
+              className="input" 
+            />
           </div>
         </div>
       </div>
@@ -182,6 +230,7 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
       {/* CLIENT */}
       <div className="mb-8">
         <h3 className="text-lg font-semibold mb-4 text-white">Client</h3>
+        
         <div className="flex gap-3 mb-6">
           <button onClick={() => setClientType('particulier')} className={`flex-1 py-4 rounded-3xl font-medium transition ${clientType === 'particulier' ? 'bg-white text-black' : 'bg-zinc-800 text-white'}`}>Particulier</button>
           <button onClick={() => setClientType('pro')} className={`flex-1 py-4 rounded-3xl font-medium transition ${clientType === 'pro' ? 'bg-white text-black' : 'bg-zinc-800 text-white'}`}>Professionnel</button>
@@ -201,6 +250,7 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
         </div>
       </div>
 
+      {/* Lignes prestations */}
       <div className="space-y-4 mb-8">
         {items.map((item, index) => (
           <div key={index} className="flex flex-col md:flex-row gap-4">
