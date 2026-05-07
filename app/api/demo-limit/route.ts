@@ -1,58 +1,57 @@
-import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { NextRequest, NextResponse } from 'next/server'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export async function GET(req: NextRequest) {
-  try {
-    const ip = (req.headers.get('x-forwarded-for')?.split(',')[0] || 
-                req.headers.get('x-real-ip') || 'unknown').trim()
+// ← TON IP PUBLIQUE ICI (remplace par la tienne)
+const ALLOWED_IP = '91.160.58.131'   // ← CHANGE ÇA
 
-    const { data, error } = await supabase
-      .from('demo_usage')
-      .select('count')
-      .eq('ip', ip)
-      .single()
+export async function GET(request: NextRequest) {
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0] 
+           || request.headers.get('x-real-ip') 
+           || 'unknown'
 
-    const usage = data?.count || 0
-
-    return NextResponse.json({ 
-      remaining: Math.max(0, 5 - usage),
-      limitReached: usage >= 5 
-    })
-  } catch (e) {
-    console.error("GET demo-limit error:", e)
-    return NextResponse.json({ remaining: 5, limitReached: false })
+  // Si c’est toi → on donne toujours 999 utilisations (pratiquement illimité)
+  if (ip === ALLOWED_IP) {
+    return NextResponse.json({ remaining: 999, limitReached: false })
   }
+
+  // Sinon on applique la limite normale
+  const { data } = await supabase
+    .from('demo_usage')
+    .select('count')
+    .eq('ip', ip)
+    .single()
+
+  const count = data?.count || 0
+  const remaining = Math.max(0, 5 - count)
+
+  return NextResponse.json({
+    remaining,
+    limitReached: remaining <= 0
+  })
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    const ip = (req.headers.get('x-forwarded-for')?.split(',')[0] || 
-                req.headers.get('x-real-ip') || 'unknown').trim()
+export async function POST(request: NextRequest) {
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0] 
+           || request.headers.get('x-real-ip') 
+           || 'unknown'
 
-    const { data: existing } = await supabase
-      .from('demo_usage')
-      .select('count')
-      .eq('ip', ip)
-      .single()
-
-    const newCount = (existing?.count || 0) + 1
-
-    await supabase
-      .from('demo_usage')
-      .upsert({ 
-        ip, 
-        count: newCount,
-        last_used: new Date().toISOString()
-      })
-
-    return NextResponse.json({ remaining: Math.max(0, 5 - newCount) })
-  } catch (e) {
-    console.error("POST demo-limit error:", e)
-    return NextResponse.json({ remaining: 5 })
+  // Si c’est ton IP → on ne compte pas les utilisations
+  if (ip === ALLOWED_IP) {
+    return NextResponse.json({ success: true })
   }
+
+  // Sinon on incrémente le compteur
+  await supabase
+    .from('demo_usage')
+    .upsert({ ip, count: 1 }, { onConflict: 'ip' })
+
+  // On incrémente proprement
+  await supabase.rpc('increment_demo_usage', { user_ip: ip })
+
+  return NextResponse.json({ success: true })
 }
