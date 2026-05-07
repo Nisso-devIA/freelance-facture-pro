@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { Download, Trash2, CheckCircle, Clock } from 'lucide-react'
+import { createClientComponentClient } from '@/lib/supabase'
 
 interface Invoice {
   id: string
@@ -18,7 +19,7 @@ interface InvoiceTableProps {
   onRefresh: () => void
   demoMode?: boolean
   onDemoDelete?: (id: string) => void
-  onMarkAsPaid?: (id: string) => void
+  onMarkAsPaid?: (id: string) => void   // ← Ajouté ici
 }
 
 export function InvoiceTable({ 
@@ -30,19 +31,31 @@ export function InvoiceTable({
   onMarkAsPaid 
 }: InvoiceTableProps) {
 
-  const markAsPaid = (id: string, number: string) => {
+  const supabase = createClientComponentClient()
+
+  const markAsPaid = async (id: string, number: string) => {
     if (!confirm(`Marquer ${number} comme PAYÉE ?`)) return
 
-    // Mise à jour locale pour démo OU réelle
-    onMarkAsPaid?.(id)
-
     if (demoMode) {
+      // Mise à jour locale pour démo
+      onMarkAsPaid?.(id)
       alert(`✅ Facture ${number} marquée comme payée (démo)`)
-    } else {
-      alert(`✅ Facture ${number} marquée comme payée !`)
+      onRefresh()
+      return
     }
 
-    onRefresh()
+    // Mise à jour réelle Supabase
+    const { error } = await supabase
+      .from('invoices')
+      .update({ status: 'paid' })
+      .eq('id', id)
+
+    if (error) {
+      alert('Erreur lors de la mise à jour')
+    } else {
+      alert(`✅ Facture ${number} marquée comme payée !`)
+      onRefresh()
+    }
   }
 
   const handleDelete = (id: string, number: string) => {
