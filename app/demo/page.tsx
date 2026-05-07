@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { InvoiceForm } from '@/components/InvoiceForm'
 import { InvoiceTable } from '@/components/InvoiceTable'
 
@@ -53,18 +54,46 @@ export default function DemoPage() {
     localStorage.setItem('demoInvoices', JSON.stringify(updatedInvoices))
   }
 
+  if (limitReached) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-rose-950 to-violet-950 flex items-center justify-center p-6">
+        <div className="text-center max-w-md">
+          <div className="text-7xl mb-6">🚀</div>
+          <h2 className="text-5xl font-bold tracking-tighter mb-4">Limite atteinte (5/5)</h2>
+          <p className="text-xl text-zinc-300 mb-10">Tu as utilisé toutes tes démos gratuites.<br />Crée un compte pour continuer sans limite.</p>
+          <Link 
+            href="/register"
+            className="inline-block bg-white text-black px-12 py-5 rounded-3xl font-bold text-xl hover:scale-105 transition-all"
+          >
+            Créer mon compte gratuit →
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-indigo-950 to-violet-950 text-white relative">
+    <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-indigo-950 to-violet-950 text-white">
       <div className="max-w-6xl mx-auto px-6 py-12">
+        {/* Header avec bouton retour */}
         <div className="flex justify-between items-center mb-12">
           <div>
             <h1 className="text-6xl font-bold tracking-tighter">Mode Démo</h1>
             <p className="text-zinc-400 mt-2">Essaye le produit complet — 5 factures maximum</p>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-2xl px-8 py-4 rounded-3xl border border-white/10 flex items-center gap-3 text-lg font-medium">
-            <span className="text-emerald-400">●</span>
-            {remaining} utilisation{remaining > 1 ? 's' : ''} restante{remaining > 1 ? 's' : ''}
+          <div className="flex items-center gap-4">
+            <Link
+              href="/"
+              className="px-6 py-3 border border-white/30 hover:bg-white/10 rounded-3xl text-sm font-medium transition flex items-center gap-2"
+            >
+              ← Retour à l'accueil
+            </Link>
+
+            <div className="bg-white/10 backdrop-blur-2xl px-8 py-4 rounded-3xl border border-white/10 flex items-center gap-3 text-lg font-medium">
+              <span className="text-emerald-400">●</span>
+              {remaining} utilisation{remaining > 1 ? 's' : ''} restante{remaining > 1 ? 's' : ''}
+            </div>
           </div>
         </div>
 
@@ -82,26 +111,6 @@ export default function DemoPage() {
           onMarkAsPaid={handleMarkAsPaidDemo}
         />
       </div>
-
-      {/* Overlay doux quand limite atteinte */}
-      {limitReached && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-xl flex items-center justify-center z-50">
-          <div className="bg-zinc-900 rounded-3xl p-10 max-w-md text-center border border-white/10 shadow-2xl">
-            <div className="text-6xl mb-6">🚀</div>
-            <h2 className="text-4xl font-bold tracking-tighter mb-4">Limite atteinte (5/5)</h2>
-            <p className="text-xl text-zinc-300 mb-8">
-              Merci d'avoir testé le mode démo !<br />
-              Crée un compte gratuit pour continuer sans limite.
-            </p>
-            <a 
-              href="/register"
-              className="inline-block bg-white text-black px-10 py-5 rounded-3xl font-bold text-xl hover:scale-105 transition-all w-full"
-            >
-              Créer mon compte gratuit →
-            </a>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
