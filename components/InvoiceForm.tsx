@@ -6,11 +6,7 @@ import { createClient } from '@supabase/supabase-js'
 import { generatePDF } from '@/lib/pdf-template'
 import { sendInvoiceEmail } from '@/lib/email'
 
-interface InvoiceItem {
-  description: string
-  quantity: number
-  price: number
-}
+interface InvoiceItem { description: string; quantity: number; price: number }
 
 interface InvoiceFormProps {
   onSuccess?: (invoice?: any) => void
@@ -22,38 +18,25 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
   const [items, setItems] = useState<InvoiceItem[]>([{ description: '', quantity: 1, price: 0 }])
   const [loading, setLoading] = useState(false)
 
-  // ÉMETTEUR - modifiable + sauvegarde localStorage
+  // Émetteur modifiable
   const [emitter, setEmitter] = useState({
-    name: "Alexandre Martin",
-    address: "123 Rue du Code, 75002 Paris",
-    siret: "12345678901234",
-    tva: "FR12345678901"
+    name: "Alexandre Martin", address: "123 Rue du Code, 75002 Paris",
+    siret: "12345678901234", tva: "FR12345678901"
   })
 
-  // Charger émetteur sauvegardé
   useEffect(() => {
-    const savedEmitter = localStorage.getItem('invoiceEmitter')
-    if (savedEmitter) {
-      setEmitter(JSON.parse(savedEmitter))
-    }
+    const saved = localStorage.getItem('invoiceEmitter')
+    if (saved) setEmitter(JSON.parse(saved))
   }, [])
 
-  // Sauvegarder émetteur à chaque modification
-  const updateEmitter = (field: keyof typeof emitter, value: string) => {
+  const updateEmitter = (field: string, value: string) => {
     const newEmitter = { ...emitter, [field]: value }
     setEmitter(newEmitter)
     localStorage.setItem('invoiceEmitter', JSON.stringify(newEmitter))
   }
 
-  // Client
   const [clientType, setClientType] = useState<'particulier' | 'pro'>('particulier')
-  const [client, setClient] = useState({
-    name: "",
-    email: "",
-    address: "",
-    siret: "",
-    tva: ""
-  })
+  const [client, setClient] = useState({ name: "", email: "", address: "", siret: "", tva: "" })
 
   const supabase = createClientComponentClient()
   const serviceSupabase = useMemo(() => createClient(
@@ -76,122 +59,68 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
   const handleSubmit = async () => {
     setLoading(true)
 
-    if (!emitter.name || !emitter.address) {
-      alert('❌ Nom et adresse de l\'émetteur sont obligatoires')
-      setLoading(false)
-      return
-    }
-
-    if (!client.name || !client.email || !client.address) {
-      alert('❌ Nom, email et adresse du client sont obligatoires')
-      setLoading(false)
-      return
-    }
-
-    if (clientType === 'pro' && (!client.siret || !client.tva)) {
-      alert('❌ Pour un professionnel, SIRET et TVA sont obligatoires')
-      setLoading(false)
-      return
-    }
-
-    const totalAmount = items.reduce((sum, item) => sum + item.quantity * item.price, 0)
-    const invoiceNumber = 'FAC-' + Date.now().toString().slice(-8)
+    const total = items.reduce((sum, i) => sum + i.quantity * i.price, 0)
+    const number = 'FAC-' + Date.now().toString().slice(-8)
 
     const invoiceData = {
-      number: invoiceNumber,
-      emitter,
-      client: { ...client, type: clientType },
-      amount: totalAmount,
-      status: 'sent' as const,
-      created_at: new Date().toISOString(),
-      items,
+      number, emitter, client: { ...client, type: clientType },
+      amount: total, items, status: 'sent', created_at: new Date().toISOString()
     }
 
-    // ==================== MODE DÉMO ====================
     if (demoMode && onDemoCreate) {
       onDemoCreate(invoiceData)
-      onSuccess?.(invoiceData)
-
-      try {
-        const pdfBlob = await generatePDF(invoiceData)
-        const pdfUrl = URL.createObjectURL(pdfBlob)
-
-        await sendInvoiceEmail({
-          to: client.email,
-          clientName: client.name,
-          invoiceNumber,
-          amount: totalAmount,
-          pdfUrl
-        })
-
-        alert(`✅ Facture démo ${invoiceNumber} créée et envoyée !`)
-      } catch (e) {
-        console.error(e)
-        alert(`✅ Facture démo ${invoiceNumber} créée ! (email non envoyé)`)
-      }
-
-      resetForm()
       setLoading(false)
       return
     }
 
-    // ==================== MODE NORMAL ====================
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error("Utilisateur non connecté")
+      if (!user) throw new Error("Non connecté")
 
-      const { data: insertedInvoice, error: insertError } = await supabase
+      // === INSERT INVOICE ===
+      const { data: inserted } = await supabase
         .from('invoices')
-        .insert({
-          user_id: user.id,
-          number: invoiceNumber,
-          client_name: client.name,
-          client_email: client.email,
-          amount: totalAmount,
-          status: 'sent',
-          items: items,
-          emitter: emitter,
-          client: client
-        })
+        .insert({ user_id: user.id, ...invoiceData })
         .select()
         .single()
 
-      if (insertError) throw insertError
-
+      // === GENERATE PDF ===
       const pdfBlob = await generatePDF(invoiceData)
-
-      const fileName = `${invoiceNumber}.pdf`
-      await serviceSupabase.storage.from('invoices').upload(fileName, pdfBlob, { contentType: 'application/pdf', upsert: true })
-
+      const fileName = `${number}.pdf`
+      await serviceSupabase.storage.from('invoices').upload(fileName, pdfBlob, { upsert: true })
       const { data: { publicUrl } } = serviceSupabase.storage.from('invoices').getPublicUrl(fileName)
 
-      await sendInvoiceEmail({
-        to: client.email,
-        clientName: client.name,
-        invoiceNumber,
-        amount: totalAmount,
-        pdfUrl: publicUrl
+      // === SEND EMAIL (relative URL = même projet) ===
+      const res = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: client.email,
+          clientName: client.name,
+          invoiceNumber: number,
+          amount: total,
+          pdfUrl: publicUrl
+        })
       })
 
-      alert(`✅ Facture ${invoiceNumber} créée et envoyée à ${client.email} !`)
-      onSuccess?.(insertedInvoice)
+      const result = await res.json()
+      console.log('📧 Email API response:', result)
 
-    } catch (error: any) {
-      console.error(error)
-      alert('Erreur lors de la création : ' + (error.message || 'Erreur inconnue'))
+      if (!res.ok) throw new Error(result.error || 'Failed to send email')
+
+      alert(`✅ Facture ${number} envoyée à ${client.email}`)
+      onSuccess?.(inserted)
+
+    } catch (err: any) {
+      console.error('Erreur finale:', err)
+      alert('Erreur : ' + err.message)
     } finally {
-      resetForm()
       setLoading(false)
     }
   }
 
-  const resetForm = () => {
-    setItems([{ description: '', quantity: 1, price: 0 }])
-    setClient({ name: "", email: "", address: "", siret: "", tva: "" })
-  }
-
   return (
-    <div className="glass rounded-3xl p-6 md:p-8">
+    <div className="glass rounded-3xl p-8">
       <h2 className="text-3xl md:text-4xl font-bold mb-8 text-white tracking-tight">Nouvelle Facture</h2>
 
       {/* ÉMETTEUR MODIFIABLE */}
