@@ -22,7 +22,7 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
   const [items, setItems] = useState<InvoiceItem[]>([{ description: '', quantity: 1, price: 0 }])
   const [loading, setLoading] = useState(false)
 
-  // Émetteur
+  // Émetteur fixe
   const [emitter] = useState({
     name: "Alexandre Martin",
     address: "123 Rue du Code, 75002 Paris",
@@ -34,7 +34,7 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
   const [clientType, setClientType] = useState<'particulier' | 'pro'>('particulier')
   const [client, setClient] = useState({
     name: "",
-    email: "",           // Toujours présent
+    email: "",
     address: "",
     siret: "",
     tva: ""
@@ -66,7 +66,6 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
       setLoading(false)
       return
     }
-
     if (clientType === 'pro' && (!client.siret || !client.tva)) {
       alert('❌ Pour un professionnel, SIRET et TVA sont obligatoires')
       setLoading(false)
@@ -86,6 +85,7 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
       items,
     }
 
+    // ==================== MODE DÉMO ====================
     if (demoMode && onDemoCreate) {
       onDemoCreate(invoiceData)
       onSuccess?.(invoiceData)
@@ -94,12 +94,12 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
         const pdfBlob = await generatePDF(invoiceData)
         const pdfUrl = URL.createObjectURL(pdfBlob)
 
-        await sendInvoiceEmail({ 
-          to: client.email, 
-          clientName: client.name, 
-          invoiceNumber, 
-          amount: totalAmount, 
-          pdfUrl 
+        await sendInvoiceEmail({
+          to: client.email,
+          clientName: client.name,
+          invoiceNumber,
+          amount: totalAmount,
+          pdfUrl
         })
 
         alert(`✅ Facture démo ${invoiceNumber} créée et envoyée à ${client.email} !`)
@@ -114,7 +114,70 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
       return
     }
 
-    alert(`✅ Facture ${invoiceNumber} créée (mode normal)`)
+    // ==================== MODE NORMAL (vrai dashboard) ====================
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error("Utilisateur non connecté")
+
+      // 1. Insert dans Supabase
+      const { data: insertedInvoice, error: insertError } = await supabase
+        .from('invoices')
+        .insert({
+          user_id: user.id,
+          number: invoiceNumber,
+          client_name: client.name,
+          client_email: client.email,
+          amount: totalAmount,
+          status: 'sent',
+          items: items,
+          emitter: emitter,
+          client: client
+        })
+        .select()
+        .single()
+
+      if (insertError) throw insertError
+
+      // 2. Générer PDF
+          // 2. Générer PDF
+      const pdfBlob = await generatePDF(invoiceData)   // ← plus simple et TS OK
+
+      // 3. Upload PDF dans Storage
+      const fileName = `${invoiceNumber}.pdf`
+      const { data: uploadData, error: uploadError } = await serviceSupabase
+        .storage
+        .from('invoices')
+        .upload(fileName, pdfBlob, { contentType: 'application/pdf', upsert: true })
+
+      if (uploadError) throw uploadError
+
+      const { data: { publicUrl } } = serviceSupabase
+        .storage
+        .from('invoices')
+        .getPublicUrl(fileName)
+
+      // 4. Envoyer l'email
+      await sendInvoiceEmail({
+        to: client.email,
+        clientName: client.name,
+        invoiceNumber,
+        amount: totalAmount,
+        pdfUrl: publicUrl
+      })
+
+      alert(`✅ Facture ${invoiceNumber} créée et envoyée à ${client.email} !`)
+
+      // 5. Rafraîchir l'historique
+      onSuccess?.(insertedInvoice)
+
+    } catch (error: any) {
+      console.error(error)
+      alert('Erreur lors de la création de la facture : ' + error.message)
+    }
+
+    // Reset form
+    setItems([{ description: '', quantity: 1, price: 0 }])
+    setClient({ name: "", email: "", address: "", siret: "", tva: "" })
     setLoading(false)
   }
 
@@ -170,7 +233,7 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
       <button type="button" onClick={addItem} className="text-violet-400 hover:text-violet-500 mb-6 text-lg">+ Ajouter une ligne</button>
 
       <button onClick={handleSubmit} disabled={loading} className="w-full btn-primary">
-        {loading ? 'Création & Envoi...' : demoMode ? 'Créer & Envoyer en Démo' : 'Créer & Envoyer la Facture'}
+        {loading ? 'Création & Envoi en cours...' : demoMode ? 'Créer & Envoyer en Démo' : 'Créer & Envoyer la Facture'}
       </button>
     </div>
   )
