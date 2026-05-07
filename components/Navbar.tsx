@@ -4,25 +4,10 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@/lib/supabase'
 import { LogOut } from 'lucide-react'
-import { useState } from 'react'
 
 export default function Navbar() {
   const router = useRouter()
   const supabase = createClientComponentClient()
-  const [isClicked, setIsClicked] = useState(false)
-
-  const handleLogoClick = (e: React.MouseEvent) => {
-    e.preventDefault()
-    setIsClicked(true)
-    
-    // Animation de 600ms
-    setTimeout(() => setIsClicked(false), 600)
-    
-    // Redirection après animation
-    setTimeout(() => {
-      router.push('/')
-    }, 300)
-  }
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -33,28 +18,25 @@ export default function Navbar() {
     <nav className="border-b border-white/10 bg-zinc-950/90 backdrop-blur-2xl sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
         
-        {/* === LOGO FP ANIMÉ AU CLIC === */}
+        {/* === LOGO FP HOVER ANIMATION === */}
         <Link 
           href="/" 
-          onClick={handleLogoClick}
-          className="flex items-center gap-3 group cursor-pointer select-none active:scale-95 transition-transform"
+          className="flex items-center gap-3 group cursor-pointer select-none"
         >
-          <div className={`relative w-14 h-14 transition-all duration-300 ${isClicked ? 'animate-bounce' : ''}`}>
-            {/* Glow intense */}
-            <div className="absolute inset-0 bg-gradient-to-br from-violet-500 via-fuchsia-500 to-cyan-400 rounded-3xl blur-2xl opacity-75 group-hover:opacity-100 transition-all" />
+          <div className="relative w-14 h-14 transition-all duration-500 group-hover:rotate-12">
+            {/* Glow intense au hover */}
+            <div className="absolute inset-0 bg-gradient-to-br from-violet-500 via-fuchsia-500 to-cyan-400 rounded-3xl blur-2xl opacity-60 group-hover:opacity-90 group-hover:scale-110 transition-all duration-500" />
             
             {/* Cercle principal */}
-            <div className="relative w-full h-full bg-gradient-to-br from-violet-600 to-fuchsia-600 rounded-3xl flex items-center justify-center shadow-2xl border border-white/30 overflow-hidden">
-              <span 
-                className={`text-4xl font-black tracking-tighter text-white drop-shadow-xl transition-all duration-300 ${isClicked ? 'scale-125 rotate-12' : 'group-hover:scale-110'}`}
-              >
+            <div className="relative w-full h-full bg-gradient-to-br from-violet-600 to-fuchsia-600 rounded-3xl flex items-center justify-center shadow-2xl border border-white/30 overflow-hidden group-hover:scale-110 transition-all duration-500">
+              <span className="text-4xl font-black tracking-tighter text-white drop-shadow-2xl transition-all duration-300 group-hover:scale-125 group-hover:-rotate-6">
                 FP
               </span>
             </div>
           </div>
 
           <div className="leading-none">
-            <div className="font-bold text-3xl tracking-tighter bg-gradient-to-r from-white via-cyan-200 to-fuchsia-200 bg-clip-text text-transparent group-hover:from-violet-300 group-hover:to-cyan-300 transition-all">
+            <div className="font-bold text-3xl tracking-tighter bg-gradient-to-r from-white via-cyan-200 to-fuchsia-200 bg-clip-text text-transparent group-hover:from-violet-300 group-hover:to-cyan-300 transition-all duration-300">
               Facture Pro
             </div>
             <div className="text-xs text-zinc-500">Freelance Edition 2026</div>
