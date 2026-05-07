@@ -51,3 +51,11 @@
   transform: translateY(-4px);
   box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 }
+
+@keyframes bounce {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  20%  { transform: scale(1.1) rotate(-8deg); }
+  40%  { transform: scale(0.95) rotate(8deg); }
+  60%  { transform: scale(1.15) rotate(-4deg); }
+  80%  { transform: scale(1.05) rotate(4deg); }
+}
