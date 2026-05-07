@@ -56,10 +56,110 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
     setItems(newItems)
   }
 
-  const handleSubmit = async () => { 
-    // Ton code handleSubmit actuel reste inchangé (je ne le modifie pas pour éviter les erreurs)
+  const handleSubmit = async () => {
     setLoading(true)
-    // ... (tout ton handleSubmit reste identique) ...
+
+    try {
+      if (!client.name || !client.email || !client.address) {
+        alert('❌ Nom, email et adresse du client sont obligatoires')
+        return
+      }
+      if (clientType === 'pro' && (!client.siret || !client.tva)) {
+        alert('❌ Pour un professionnel, SIRET et TVA sont obligatoires')
+        return
+      }
+
+      const totalAmount = items.reduce((sum, item) => sum + item.quantity * item.price, 0)
+      const invoiceNumber = 'FAC-' + Date.now().toString().slice(-8)
+
+      const invoiceData = {
+        number: invoiceNumber,
+        emitter,
+        client: { ...client, type: clientType },
+        amount: totalAmount,
+        status: 'sent' as const,
+        created_at: new Date().toISOString(),
+        items,
+      }
+
+      // ==================== MODE DÉMO ====================
+      if (demoMode && onDemoCreate) {
+        onDemoCreate(invoiceData)
+        onSuccess?.(invoiceData)
+
+        const pdfBlob = await generatePDF(invoiceData)
+        const pdfUrl = URL.createObjectURL(pdfBlob)
+
+        try {
+          await sendInvoiceEmail({
+            to: client.email,
+            clientName: client.name,
+            invoiceNumber,
+            amount: totalAmount,
+            pdfUrl
+          })
+          alert(`✅ Facture démo ${invoiceNumber} créée et envoyée !`)
+        } catch (e) {
+          console.error(e)
+          alert(`✅ Facture démo ${invoiceNumber} créée ! (email non envoyé)`)
+        }
+        return
+      }
+
+      // ==================== MODE NORMAL ====================
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error("Utilisateur non connecté")
+
+      const { data: insertedInvoice, error: insertError } = await supabase
+        .from('invoices')
+        .insert({
+          user_id: user.id,
+          number: invoiceNumber,
+          client_name: client.name,
+          client_email: client.email,
+          amount: totalAmount,
+          status: 'sent',
+          items: items,
+          emitter: emitter,
+          client: client
+        })
+        .select()
+        .single()
+
+      if (insertError) throw insertError
+
+      const pdfBlob = await generatePDF(invoiceData)
+
+      const fileName = `${invoiceNumber}.pdf`
+      const { error: uploadError } = await serviceSupabase
+        .storage
+        .from('invoices')
+        .upload(fileName, pdfBlob, { contentType: 'application/pdf', upsert: true })
+
+      if (uploadError) throw uploadError
+
+      const { data: { publicUrl } } = serviceSupabase.storage.from('invoices').getPublicUrl(fileName)
+
+      await sendInvoiceEmail({
+        to: client.email,
+        clientName: client.name,
+        invoiceNumber,
+        amount: totalAmount,
+        pdfUrl: publicUrl
+      })
+
+      alert(`✅ Facture ${invoiceNumber} créée et envoyée à ${client.email} !`)
+      onSuccess?.(insertedInvoice)
+
+    } catch (error: any) {
+      console.error('Erreur création facture:', error)
+      alert('Erreur lors de la création : ' + (error.message || 'Erreur inconnue'))
+    } finally {
+      // Toujours reset le loading, même en cas d'erreur
+      setLoading(false)
+      setItems([{ description: '', quantity: 1, price: 0 }])
+      setClient({ name: "", email: "", address: "", siret: "", tva: "" })
+    }
   }
 
   return (
@@ -82,7 +182,6 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
       {/* CLIENT */}
       <div className="mb-8">
         <h3 className="text-lg font-semibold mb-4 text-white">Client</h3>
-        
         <div className="flex gap-3 mb-6">
           <button onClick={() => setClientType('particulier')} className={`flex-1 py-4 rounded-3xl font-medium transition ${clientType === 'particulier' ? 'bg-white text-black' : 'bg-zinc-800 text-white'}`}>Particulier</button>
           <button onClick={() => setClientType('pro')} className={`flex-1 py-4 rounded-3xl font-medium transition ${clientType === 'pro' ? 'bg-white text-black' : 'bg-zinc-800 text-white'}`}>Professionnel</button>
@@ -102,7 +201,6 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
         </div>
       </div>
 
-      {/* Lignes prestations */}
       <div className="space-y-4 mb-8">
         {items.map((item, index) => (
           <div key={index} className="flex flex-col md:flex-row gap-4">
@@ -119,7 +217,7 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
       <button type="button" onClick={addItem} className="text-violet-400 hover:text-violet-500 mb-6 text-lg">+ Ajouter une ligne</button>
 
       <button onClick={handleSubmit} disabled={loading} className="w-full btn-primary text-lg py-6">
-        {loading ? 'Création & Envoi...' : demoMode ? 'Créer en Démo' : 'Créer & Envoyer la Facture'}
+        {loading ? 'Création & Envoi en cours...' : demoMode ? 'Créer en Démo' : 'Créer & Envoyer la Facture'}
       </button>
     </div>
   )
