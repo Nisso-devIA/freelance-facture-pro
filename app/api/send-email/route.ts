@@ -4,14 +4,12 @@ import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
-export const dynamic = 'force-dynamic'
-
 export async function OPTIONS() {
-  return new NextResponse(null, {
+  return NextResponse.json({}, {
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Headers': '*',
     }
   })
 }
@@ -21,13 +19,15 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
 
     const { data, error } = await resend.emails.send({
-      from: 'Facture Pro <onboarding@resend.dev>', // domaine par défaut Resend
+      from: 'Facture Pro <onboarding@resend.dev>',
       to: body.to,
-      subject: `Facture ${body.invoiceNumber || 'Nouvelle'} - ${body.amount}€`,
+      subject: `Facture ${body.invoiceNumber || ''} - ${body.amount}€`,
       html: `
-        <h2>Bonjour ${body.clientName},</h2>
+        <h2>Bonjour ${body.clientName || 'Client'},</h2>
         <p>Votre facture est prête.</p>
-        <a href="${body.pdfUrl}" target="_blank">📄 Télécharger PDF</a>
+        <a href="${body.pdfUrl}" target="_blank" style="background:#8b5cf6;color:white;padding:14px 28px;border-radius:12px;text-decoration:none;display:inline-block;margin:20px 0;">
+          📄 Télécharger la facture PDF
+        </a>
       `,
     })
 
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (err: any) {
-    console.error('Send-email error:', err)
+    console.error('Send email error:', err)
     return NextResponse.json({ error: err.message }, { 
       status: 500,
       headers: { 'Access-Control-Allow-Origin': '*' }
