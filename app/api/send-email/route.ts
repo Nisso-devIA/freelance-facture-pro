@@ -1,34 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
+import { sendInvoiceEmail } from '@/lib/email'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+export async function POST(req: NextRequest) {
+  // CORS headers pour permettre les appels depuis tous les sous-domaines Vercel + prod
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*', // Ou remplace par ton domaine exact en prod
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Max-Age': '86400',
+  }
 
-export async function POST(request: NextRequest) {
+  // Préflight OPTIONS
+  if (req.method === 'OPTIONS') {
+    return NextResponse.json({}, { headers: corsHeaders })
+  }
+
   try {
-    const { to, clientName, invoiceNumber, amount, pdfUrl } = await request.json()
+    const body = await req.json()
 
-    const { data, error } = await resend.emails.send({
-      from: 'Facture Pro <onboarding@resend.dev>',
-      to,
-      subject: `Votre facture ${invoiceNumber}`,
-      html: `
-        <h1>Bonjour ${clientName},</h1>
-        <p>Voici votre facture <strong>${invoiceNumber}</strong> pour un montant de <strong>${amount.toFixed(2)} €</strong>.</p>
-        <p>
-          <a href="${pdfUrl}" style="background:#fff;color:#000;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">
-            📥 Télécharger le PDF
-          </a>
-        </p>
-        <p>Merci pour votre confiance !</p>
-      `,
+    const result = await sendInvoiceEmail({
+      to: body.to,
+      clientName: body.clientName,
+      invoiceNumber: body.invoiceNumber,
+      amount: body.amount,
+      pdfUrl: body.pdfUrl,
     })
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
-    }
+    return NextResponse.json({ success: true, result }, { headers: corsHeaders })
 
-    return NextResponse.json({ success: true, id: data?.id })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+  } catch (error: any) {
+    console.error('Send email error:', error)
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500, headers: corsHeaders }
+    )
   }
 }
