@@ -4,24 +4,17 @@ import { sendInvoiceEmail } from '@/lib/email'
 export async function POST(req: NextRequest) {
   const origin = req.headers.get('origin') || ''
 
-  // Autorise tous les domaines Vercel + localhost (très pratique en prod/preview)
-  const allowedOrigins = [
-    'https://freelance-facture-pro.vercel.app',
-    'http://localhost:3000',
-    'https://freelance-facture-pro.vercel.app/*',           // ton preview actuel
-    // Ajoute ici d'autres previews si besoin
-  ]
-
-  const isAllowed = allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')
+  // Autorise TOUT ce qui est Vercel + localhost (le plus fiable)
+  const isVercelOrigin = origin.endsWith('.vercel.app') || origin.includes('localhost')
 
   const headers = {
-    'Access-Control-Allow-Origin': isAllowed ? origin : '',
+    'Access-Control-Allow-Origin': isVercelOrigin ? origin : '',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Max-Age': '86400',
   }
 
-  // Préflight CORS
+  // Réponse au preflight OPTIONS
   if (req.method === 'OPTIONS') {
     return NextResponse.json({}, { headers })
   }
