@@ -1,7 +1,6 @@
 ﻿'use client'
 
 import { Download, Trash2, CheckCircle, Clock } from 'lucide-react'
-import { createClientComponentClient } from '@/lib/supabase'
 
 interface Invoice {
   id: string
@@ -19,7 +18,7 @@ interface InvoiceTableProps {
   onRefresh: () => void
   demoMode?: boolean
   onDemoDelete?: (id: string) => void
-  onMarkAsPaid?: (id: string) => void   // ← Ajouté ici
+  onMarkAsPaid?: (id: string) => void
 }
 
 export function InvoiceTable({ 
@@ -31,31 +30,10 @@ export function InvoiceTable({
   onMarkAsPaid 
 }: InvoiceTableProps) {
 
-  const supabase = createClientComponentClient()
-
-  const markAsPaid = async (id: string, number: string) => {
+  const markAsPaid = (id: string, number: string) => {
     if (!confirm(`Marquer ${number} comme PAYÉE ?`)) return
-
-    if (demoMode) {
-      // Mise à jour locale pour démo
-      onMarkAsPaid?.(id)
-      alert(`✅ Facture ${number} marquée comme payée (démo)`)
-      onRefresh()
-      return
-    }
-
-    // Mise à jour réelle Supabase
-    const { error } = await supabase
-      .from('invoices')
-      .update({ status: 'paid' })
-      .eq('id', id)
-
-    if (error) {
-      alert('Erreur lors de la mise à jour')
-    } else {
-      alert(`✅ Facture ${number} marquée comme payée !`)
-      onRefresh()
-    }
+    onMarkAsPaid?.(id)
+    onRefresh()
   }
 
   const handleDelete = (id: string, number: string) => {
@@ -72,7 +50,7 @@ export function InvoiceTable({
   }
 
   return (
-    <div className="glass rounded-3xl p-8 mt-8">
+    <div className="glass rounded-3xl p-6 md:p-8 mt-8">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-3xl font-bold text-white">Historique des factures</h2>
         <button onClick={onRefresh} className="text-violet-400 hover:text-white">↻ Actualiser</button>
@@ -81,49 +59,65 @@ export function InvoiceTable({
       {invoices.length === 0 ? (
         <p className="text-zinc-500 text-center py-16">Aucune facture pour le moment</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-white/10">
-                <th className="text-left py-4">N° Facture</th>
-                <th className="text-left py-4">Client</th>
-                <th className="text-right py-4">Montant</th>
-                <th className="text-center py-4">Statut</th>
-                <th className="text-center py-4">Date</th>
-                <th className="text-center py-4">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/10">
-              {invoices.map((inv) => (
-                <tr key={inv.id} className="hover:bg-white/5 transition">
-                  <td className="py-5 font-mono text-white">{inv.number}</td>
-                  <td className="py-5 text-white">{inv.client_name}</td>
-                  <td className="py-5 text-right font-bold text-white">{inv.amount.toFixed(2)} €</td>
-                  <td className="py-5 text-center">{getStatusBadge(inv.status)}</td>
-                  <td className="py-5 text-zinc-400 text-sm">
-                    {new Date(inv.created_at).toLocaleDateString('fr-FR')}
-                  </td>
-                  <td className="py-5 text-center flex gap-4">
-                    {inv.pdf_url && <a href={inv.pdf_url} target="_blank"><Download size={20} /></a>}
+        <>
+          {/* Mobile + Tablette : Cartes */}
+          <div className="md:hidden space-y-4">
+            {invoices.map((inv) => (
+              <div key={inv.id} className="bg-zinc-900 border border-white/10 rounded-3xl p-6">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-mono text-lg">{inv.number}</p>
+                    <p className="text-white">{inv.client_name}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold">{inv.amount.toFixed(2)} €</p>
+                    {getStatusBadge(inv.status)}
+                  </div>
+                </div>
+                <div className="mt-6 flex justify-between text-sm text-zinc-400">
+                  <span>{new Date(inv.created_at).toLocaleDateString('fr-FR')}</span>
+                  <div className="flex gap-6">
+                    {inv.pdf_url && <a href={inv.pdf_url} target="_blank"><Download size={22} /></a>}
+                    {inv.status !== 'paid' && <button onClick={() => markAsPaid(inv.id, inv.number)}><CheckCircle size={24} /></button>}
+                    <button onClick={() => handleDelete(inv.id, inv.number)}><Trash2 size={22} /></button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
 
-                    {inv.status !== 'paid' && (
-                      <button 
-                        onClick={() => markAsPaid(inv.id, inv.number)}
-                        className="text-emerald-400 hover:text-emerald-500"
-                      >
-                        <CheckCircle size={22} />
-                      </button>
-                    )}
-
-                    <button onClick={() => handleDelete(inv.id, inv.number)} className="text-red-400 hover:text-red-500">
-                      <Trash2 size={20} />
-                    </button>
-                  </td>
+          {/* Desktop : Tableau */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-white/10">
+                  <th className="text-left py-4">N° Facture</th>
+                  <th className="text-left py-4">Client</th>
+                  <th className="text-right py-4">Montant</th>
+                  <th className="text-center py-4">Statut</th>
+                  <th className="text-center py-4">Date</th>
+                  <th className="text-center py-4">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-white/10">
+                {invoices.map((inv) => (
+                  <tr key={inv.id} className="hover:bg-white/5 transition">
+                    <td className="py-5 font-mono text-white">{inv.number}</td>
+                    <td className="py-5 text-white">{inv.client_name}</td>
+                    <td className="py-5 text-right font-bold text-white">{inv.amount.toFixed(2)} €</td>
+                    <td className="py-5 text-center">{getStatusBadge(inv.status)}</td>
+                    <td className="py-5 text-zinc-400 text-sm">{new Date(inv.created_at).toLocaleDateString('fr-FR')}</td>
+                    <td className="py-5 text-center flex gap-4">
+                      {inv.pdf_url && <a href={inv.pdf_url} target="_blank"><Download size={20} /></a>}
+                      {inv.status !== 'paid' && <button onClick={() => markAsPaid(inv.id, inv.number)}><CheckCircle size={22} /></button>}
+                      <button onClick={() => handleDelete(inv.id, inv.number)}><Trash2 size={20} /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   )

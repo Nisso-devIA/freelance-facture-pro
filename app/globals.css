@@ -22,54 +22,32 @@
 
 @layer components {
   .glass {
-    background: rgba(24, 24, 27, 0.75);
+    background: rgba(24, 24, 27, 0.85);
     backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
   .btn-primary {
-    @apply bg-white text-black font-bold py-5 px-10 rounded-3xl hover:scale-105 active:scale-95 transition-all duration-300 shadow-xl shadow-white/20;
+    @apply bg-white text-black font-bold py-5 px-8 rounded-3xl hover:scale-105 active:scale-95 transition-all shadow-xl shadow-white/20;
   }
 
   .input {
-    @apply bg-zinc-950 border border-white/20 rounded-2xl px-6 py-4 text-white placeholder-zinc-500 focus:border-violet-500 transition;
-  }
-
-  /* Animations supplémentaires */
-  .card-hover {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  
-  .card-hover:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    @apply bg-zinc-950 border border-white/20 rounded-3xl px-6 py-4 text-white placeholder-zinc-400 focus:border-violet-500 transition;
   }
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-    fade-in {
-    animation: fadeIn 0.6s ease-out forwards;
-  }
+/* Mobile-first improvements */
+@media (max-width: 768px) {
+  .text-6xl { font-size: 2.75rem !important; line-height: 1.1; }
+  .text-4xl { font-size: 2rem !important; }
+  .glass { padding: 1.5rem !important; }
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .scale-in {
-    animation: scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-
-  @keyframes scaleIn {
-    from { transform: scale(0.8); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
-  }
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.glass-hover:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.4);
-  }
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
