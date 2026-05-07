@@ -4,17 +4,38 @@
 
 @layer base {
   body {
-    font-family: 'Inter', system_ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  input, textarea, select {
+    background-color: #18181b !important;
+    border: 1px solid #3f3f46 !important;
+    color: #f4f4f5 !important;
+  }
+
+  input:focus, textarea:focus, select:focus {
+    border-color: #a855f7 !important;
+    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.2) !important;
+    outline: none;
   }
 }
 
 @layer components {
   .glass {
-    background: rgba(9, 9, 11, 0.7);
+    background: rgba(24, 24, 27, 0.75);
     backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
 
+  .btn-primary {
+    @apply bg-white text-black font-bold py-5 px-10 rounded-3xl hover:scale-105 active:scale-95 transition-all duration-300 shadow-xl shadow-white/20;
+  }
+
+  .input {
+    @apply bg-zinc-950 border border-white/20 rounded-2xl px-6 py-4 text-white placeholder-zinc-500 focus:border-violet-500 transition;
+  }
+
+  /* Animations supplémentaires */
   .card-hover {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
@@ -23,22 +44,32 @@
     transform: translateY(-4px);
     box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   }
-
-  .input-focus {
-    transition: all 0.2s ease;
-  }
-  
-  .input-focus:focus {
-    border-color: #fff;
-    box-shadow: 0 0 0 3px rgba(255,255,255,0.1);
-    transform: scale(1.02);
-  }
 }
 
 @layer utilities {
-  .text-gradient {
-    background: linear-gradient(to right, #fff, #a1a1aa);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+  .text-balance {
+    text-wrap: balance;
+    fade-in {
+    animation: fadeIn 0.6s ease-out forwards;
   }
 }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .scale-in {
+    animation: scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes scaleIn {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+}
+
+.glass-hover:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.4);
+  }

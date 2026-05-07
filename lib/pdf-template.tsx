@@ -1,78 +1,97 @@
-import { Document, Page, Text, View, StyleSheet, pdf } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 11, fontFamily: 'Helvetica' },
   header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 30 },
-  title: { fontSize: 28, fontWeight: 'bold', color: '#111' },
+  title: { fontSize: 24, fontWeight: 'bold' },
   section: { marginBottom: 20 },
   row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  tableHeader: { flexDirection: 'row', borderBottom: '1px solid #000', paddingBottom: 8, marginBottom: 8 },
-  tableRow: { flexDirection: 'row', marginBottom: 6 },
+  label: { color: '#666', width: 120 },
 })
 
 interface InvoiceData {
   number: string
-  client: string
-  items: { description: string; quantity: number; price: number }[]
+  emitter: {
+    name: string
+    address: string
+    siret: string
+    tva: string
+  }
+  client: {
+    name: string
+    email: string
+    address: string
+    siret?: string
+    tva?: string
+    type: 'particulier' | 'pro'
+  }
+  items: Array<{ description: string; quantity: number; price: number }>
+  amount: number
 }
 
 export const generatePDF = async (data: InvoiceData) => {
-  const total = data.items.reduce((sum, item) => sum + item.quantity * item.price, 0)
+  const { number, emitter, client, items, amount } = data
 
   const MyDocument = (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>FACTURE</Text>
-            <Text>{data.number}</Text>
+            <Text style={styles.title}>Facture Pro</Text>
+            <Text>Freelance Edition</Text>
           </View>
           <View style={{ textAlign: 'right' }}>
-            <Text style={{ fontSize: 14, fontWeight: 'bold' }}>Freelance Facture Pro</Text>
-            <Text>Paris, France</Text>
-            <Text>contact@freelance-facture.pro</Text>
+            <Text style={{ fontSize: 18, fontWeight: 'bold' }}>{number}</Text>
+            <Text>{new Date().toLocaleDateString('fr-FR')}</Text>
           </View>
+        </View>
+
+        {/* Émetteur */}
+        <View style={styles.section}>
+          <Text style={{ fontWeight: 'bold', marginBottom: 8 }}>Émetteur :</Text>
+          <Text>{emitter.name}</Text>
+          <Text>{emitter.address}</Text>
+          <Text>SIRET : {emitter.siret}</Text>
+          <Text>TVA : {emitter.tva}</Text>
         </View>
 
         {/* Client */}
         <View style={styles.section}>
-          <Text style={{ marginBottom: 8, fontWeight: 'bold' }}>Client :</Text>
-          <Text>{data.client}</Text>
+          <Text style={{ fontWeight: 'bold', marginBottom: 8 }}>Facturer à :</Text>
+          <Text>{client.name}</Text>
+          <Text>{client.email}</Text>
+          <Text>{client.address}</Text>
+          {client.type === 'pro' && client.siret && <Text>SIRET : {client.siret}</Text>}
+          {client.type === 'pro' && client.tva && <Text>TVA : {client.tva}</Text>}
         </View>
 
-        {/* Items Table */}
-        <View style={styles.tableHeader}>
-          <Text style={{ flex: 3 }}>Description</Text>
-          <Text style={{ flex: 1, textAlign: 'center' }}>Qté</Text>
-          <Text style={{ flex: 1, textAlign: 'right' }}>Prix</Text>
-          <Text style={{ flex: 1, textAlign: 'right' }}>Total</Text>
+        {/* Articles */}
+        <View style={styles.section}>
+          <Text style={{ fontWeight: 'bold', marginBottom: 10 }}>Prestations</Text>
+          {items.map((item, i) => (
+            <View key={i} style={styles.row}>
+              <Text>{item.description}</Text>
+              <Text>{item.quantity} × {item.price.toFixed(2)} €</Text>
+              <Text>{(item.quantity * item.price).toFixed(2)} €</Text>
+            </View>
+          ))}
         </View>
-
-        {data.items.map((item, i) => (
-          <View key={i} style={styles.tableRow}>
-            <Text style={{ flex: 3 }}>{item.description}</Text>
-            <Text style={{ flex: 1, textAlign: 'center' }}>{item.quantity}</Text>
-            <Text style={{ flex: 1, textAlign: 'right' }}>{item.price.toFixed(2)} €</Text>
-            <Text style={{ flex: 1, textAlign: 'right' }}>{(item.quantity * item.price).toFixed(2)} €</Text>
-          </View>
-        ))}
 
         {/* Total */}
-        <View style={{ marginTop: 30, borderTop: '2px solid #000', paddingTop: 12 }}>
+        <View style={{ borderTop: '1px solid #000', paddingTop: 15, marginTop: 20 }}>
           <View style={styles.row}>
-            <Text style={{ fontSize: 16, fontWeight: 'bold' }}>TOTAL</Text>
-            <Text style={{ fontSize: 16, fontWeight: 'bold' }}>{total.toFixed(2)} €</Text>
+            <Text style={{ fontSize: 16, fontWeight: 'bold' }}>Total TTC</Text>
+            <Text style={{ fontSize: 20, fontWeight: 'bold' }}>{amount.toFixed(2)} €</Text>
           </View>
         </View>
 
-        <Text style={{ position: 'absolute', bottom: 40, left: 40, fontSize: 9, color: '#666' }}>
-          Facture générée le {new Date().toLocaleDateString('fr-FR')}
+        <Text style={{ marginTop: 50, textAlign: 'center', fontSize: 10, color: '#666' }}>
+          Merci pour votre confiance • Facture Pro
         </Text>
       </Page>
     </Document>
   )
 
-  const blob = await pdf(MyDocument).toBlob()
+  const blob = await import('@react-pdf/renderer').then(({ pdf }) => pdf(MyDocument).toBlob())
   return blob
 }

@@ -4,12 +4,12 @@ import Link from 'next/link'
 
 export default function Hero() {
   return (
-    <div className="flex-1 flex items-center">
-      <div className="max-w-6xl mx-auto px-6 py-24 grid md:grid-cols-2 gap-16 items-center">
+    <div className="flex-1 flex items-center pt-20">
+      <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-16 items-center">
         
         {/* Texte */}
         <div className="space-y-8">
-          <h1 className="text-6xl md:text-7xl font-semibold tracking-tighter leading-none">
+          <h1 className="text-6xl md:text-7xl font-bold tracking-tighter leading-none">
             Factures pros,<br />
             <span className="bg-gradient-to-r from-violet-400 via-fuchsia-400 to-pink-400 bg-clip-text text-transparent">
               envoyées en 30 secondes.
@@ -38,19 +38,52 @@ export default function Hero() {
           </div>
         </div>
 
-        {/* Illustration */}
+        {/* Mockup Facture Complet avec Émetteur */}
         <div className="hidden md:flex justify-center relative">
-          <div className="w-96 h-96 relative">
-            <div className="absolute inset-0 bg-gradient-to-br from-violet-500/30 to-fuchsia-500/30 rounded-[4rem] blur-3xl"></div>
-            <div className="relative bg-zinc-900/90 backdrop-blur-3xl border border-white/10 rounded-3xl p-8 shadow-2xl">
-              <div className="bg-white rounded-2xl p-6 text-black">
-                <div className="flex justify-between mb-6">
-                  <div className="font-semibold">Facture #FAC-39281</div>
-                  <div className="text-emerald-600 font-bold">429 €</div>
+          <div className="w-full max-w-md">
+            <div className="bg-white rounded-3xl p-8 shadow-2xl">
+              
+              {/* En-tête Émetteur (Toi) */}
+              <div className="flex justify-between mb-8">
+                <div>
+                  <div className="font-bold text-xl text-black">Alexandre Martin</div>
+                  <div className="text-xs text-zinc-500">Développeur Freelance</div>
+                  <div className="text-xs text-zinc-500 mt-1">123 Rue du Code • 75002 Paris</div>
+                  <div className="text-xs text-zinc-500">contact@alexmartin.dev</div>
                 </div>
-                <div className="text-sm text-zinc-600 mb-8">Client : Sophie Martin</div>
-                <div className="text-center py-6 border-t border-black/10 text-emerald-600 font-medium">
-                  Payée avec succès ✓
+
+                <div className="text-right">
+                  <div className="text-xs text-zinc-500">Facture N°</div>
+                  <div className="font-mono font-semibold text-black">FAC-39281</div>
+                  <div className="text-xs text-zinc-500 mt-2">07 Mai 2026</div>
+                </div>
+              </div>
+
+              {/* Séparateur */}
+              <div className="border-t border-zinc-200 my-6"></div>
+
+              {/* Client */}
+              <div className="mb-8 text-black">
+                <div className="text-xs text-zinc-500 mb-2">FACTURER À</div>
+                <div className="font-semibold">Sophie Martin</div>
+                <div className="text-sm text-zinc-600">sophie.martin@gmail.com</div>
+                <div className="text-sm text-zinc-600">123 Avenue des Lilas</div>
+                <div className="text-sm text-zinc-600">75012 Paris</div>
+              </div>
+
+              {/* Montant en bas à droite */}
+              <div className="flex justify-end mb-8">
+                <div className="text-right">
+                  <div className="text-xs text-zinc-500">Montant total</div>
+                  <div className="text-4xl font-bold text-emerald-600">429 €</div>
+                  <div className="text-xs text-zinc-500">TTC</div>
+                </div>
+              </div>
+
+              {/* Statut */}
+              <div className="bg-emerald-50 rounded-2xl py-8 text-center">
+                <div className="text-emerald-600 font-semibold text-2xl flex items-center justify-center gap-3">
+                  Payée avec succès <span className="text-3xl">✓</span>
                 </div>
               </div>
             </div>

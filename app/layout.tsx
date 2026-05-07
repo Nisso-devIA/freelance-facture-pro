@@ -1,12 +1,10 @@
 ﻿import type { Metadata } from 'next'
-import './globals.css'     // ← Changé ici (point + slash)
+import './globals.css'
 
 export const metadata: Metadata = {
   title: 'Facture Pro',
-  description: 'Factures professionnelles simples et rapides',
-  icons: {
-    icon: '/favicon.ico',
-  },
+  description: 'Factures professionnelles envoyées en 30 secondes',
+  icons: { icon: '/favicon.ico' },
 }
 
 export default function RootLayout({
@@ -16,7 +14,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr">
-      <body>{children}</body>
+      <body className="bg-zinc-950 text-white antialiased">{children}</body>
     </html>
   )
 }
