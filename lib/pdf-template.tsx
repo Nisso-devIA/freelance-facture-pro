@@ -24,6 +24,12 @@ const styles = StyleSheet.create({
     height: '100%', 
     objectFit: 'contain' 
   },
+  demoLogo: { 
+    width: '100%', 
+    height: '100%', 
+    objectFit: 'contain',
+    opacity: 0.65 
+  },
   title: { 
     fontSize: 28, 
     fontWeight: 'bold', 
@@ -47,18 +53,36 @@ const styles = StyleSheet.create({
     paddingTop: 15, 
     marginTop: 25 
   },
+  watermark: { 
+    position: 'absolute', 
+    top: '42%', 
+    left: '50%', 
+    transform: 'translate(-50%, -50%) rotate(-35deg)',
+    fontSize: 92, 
+    color: '#8b5cf6', 
+    opacity: 0.09, 
+    fontWeight: 'bold',
+    zIndex: -1,
+    textAlign: 'center',
+    width: '100%'
+  }
 })
 
-export const generatePDF = async (data: any) => {
+export const generatePDF = async (data: any, demoMode: boolean = false) => {
   const MyDocument = (
     <Document>
       <Page size="A4" style={styles.page}>
+        {/* WATERMARK DÉMO */}
+        {demoMode && <Text style={styles.watermark}>DEMO</Text>}
+
         {/* HEADER AVEC LOGO */}
         <View style={styles.header}>
-          {/* Logo à gauche */}
           <View style={styles.logoContainer}>
             {data.emitter.logoUrl ? (
-              <Image src={data.emitter.logoUrl} style={styles.logo} />
+              <Image 
+                src={data.emitter.logoUrl} 
+                style={demoMode ? styles.demoLogo : styles.logo} 
+              />
             ) : (
               <View style={{
                 width: 90, 
@@ -78,6 +102,7 @@ export const generatePDF = async (data: any) => {
             <Text style={styles.title}>FACTURE</Text>
             <Text style={{ fontSize: 18, fontWeight: 'bold', marginTop: 8 }}>{data.number}</Text>
             <Text style={{ marginTop: 4 }}>{new Date().toLocaleDateString('fr-FR')}</Text>
+            {demoMode && <Text style={{ color: '#ef4444', marginTop: 4, fontSize: 13 }}>VERSION DÉMO</Text>}
           </View>
         </View>
 

@@ -144,7 +144,7 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
         .select()
         .single()
 
-      const pdfBlob = await generatePDF(invoiceData)
+      const pdfBlob = await generatePDF(invoiceData, demoMode)
       const fileName = `${number}.pdf`
 
       await serviceSupabase.storage.from('invoices').upload(fileName, pdfBlob, { upsert: true })
