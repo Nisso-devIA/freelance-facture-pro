@@ -119,33 +119,43 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
 
     try {
       // ==================== MODE DÉMO ====================
-      if (demoMode && onDemoCreate) {
-        onDemoCreate(invoiceData)
+      // ==================== MODE DÉMO ====================
+if (demoMode && onDemoCreate) {
+  onDemoCreate(invoiceData)
 
-        const pdfBlob = await generatePDF(invoiceData, true) // true = demo mode
-        const pdfUrl = URL.createObjectURL(pdfBlob)
+  const pdfBlob = await generatePDF(invoiceData, true)
+  
+  // Téléchargement direct
+  const url = URL.createObjectURL(pdfBlob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${invoiceData.number}.pdf`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 
-        if (client.email) {
-          const res = await fetch('/api/send-email', {  // ← URL relative importante
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              to: client.email,
-              clientName: client.name,
-              invoiceNumber: number,
-              amount: total,
-              pdfUrl
-            })
-          })
+  // Option email (si email renseigné)
+  if (client.email) {
+    try {
+      await sendInvoiceEmail({
+        to: client.email,
+        clientName: client.name,
+        invoiceNumber: number,
+        amount: total,
+        pdfUrl: url   // Ne marchera pas dans l'email, mais on garde pour log
+      })
+      alert(`✅ Facture démo ${number} téléchargée + email envoyé !`)
+    } catch (e) {
+      alert(`✅ Facture démo ${number} téléchargée (email non envoyé)`)
+    }
+  } else {
+    alert(`✅ Facture démo ${number} téléchargée avec succès !`)
+  }
 
-          console.log('Demo email response:', await res.json())
-          alert(`✅ Facture démo ${number} envoyée par email !`)
-        } else {
-          alert(`✅ Facture démo ${number} créée (email non envoyé)`)
-        }
-        setLoading(false)
-        return
-      }
+  setLoading(false)
+  return
+}
 
       // ==================== MODE NORMAL ====================
       const { data: { user } } = await supabase.auth.getUser()
