@@ -5,8 +5,13 @@ import { createClientComponentClient } from '@/lib/supabase'
 import { createClient } from '@supabase/supabase-js'
 import { generatePDF } from '@/lib/pdf-template'
 import { sendInvoiceEmail } from '@/lib/email'
+import { Upload, X } from 'lucide-react'
 
-interface InvoiceItem { description: string; quantity: number; price: number }
+interface InvoiceItem {
+  description: string
+  quantity: number
+  price: number
+}
 
 interface InvoiceFormProps {
   onSuccess?: (invoice?: any) => void
@@ -18,15 +23,33 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
   const [items, setItems] = useState<InvoiceItem[]>([{ description: '', quantity: 1, price: 0 }])
   const [loading, setLoading] = useState(false)
 
-  // Émetteur modifiable
+  // Logo
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
+
+  // Émetteur
   const [emitter, setEmitter] = useState({
-    name: "Alexandre Martin", address: "123 Rue du Code, 75002 Paris",
-    siret: "12345678901234", tva: "FR12345678901"
+    name: "Alexandre Martin",
+    address: "123 Rue du Code, 75002 Paris",
+    siret: "12345678901234",
+    tva: "FR12345678901",
+    logoUrl: "" as string
   })
 
+  const supabase = createClientComponentClient()
+  const serviceSupabase = useMemo(() => createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!
+  ), [])
+
+  // Charger données sauvegardées
   useEffect(() => {
     const saved = localStorage.getItem('invoiceEmitter')
-    if (saved) setEmitter(JSON.parse(saved))
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      setEmitter(parsed)
+      if (parsed.logoUrl) setLogoPreview(parsed.logoUrl)
+    }
   }, [])
 
   const updateEmitter = (field: string, value: string) => {
@@ -35,14 +58,47 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
     localStorage.setItem('invoiceEmitter', JSON.stringify(newEmitter))
   }
 
+  // Upload Logo
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setLogoFile(file)
+    const previewUrl = URL.createObjectURL(file)
+    setLogoPreview(previewUrl)
+
+    const fileExt = file.name.split('.').pop()
+    const fileName = `logos/${Date.now()}.${fileExt}`
+
+    const { error } = await serviceSupabase.storage
+      .from('invoices')
+      .upload(fileName, file, { upsert: true })
+
+    if (error) {
+      alert("Erreur lors de l'upload du logo")
+      return
+    }
+
+    const { data: { publicUrl } } = serviceSupabase.storage
+      .from('invoices')
+      .getPublicUrl(fileName)
+
+    const newEmitter = { ...emitter, logoUrl: publicUrl }
+    setEmitter(newEmitter)
+    localStorage.setItem('invoiceEmitter', JSON.stringify(newEmitter))
+  }
+
+  const removeLogo = () => {
+    setLogoFile(null)
+    setLogoPreview(null)
+    const newEmitter = { ...emitter, logoUrl: '' }
+    setEmitter(newEmitter)
+    localStorage.setItem('invoiceEmitter', JSON.stringify(newEmitter))
+  }
+
+  // Client
   const [clientType, setClientType] = useState<'particulier' | 'pro'>('particulier')
   const [client, setClient] = useState({ name: "", email: "", address: "", siret: "", tva: "" })
-
-  const supabase = createClientComponentClient()
-  const serviceSupabase = useMemo(() => createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!
-  ), [])
 
   const addItem = () => setItems([...items, { description: '', quantity: 1, price: 0 }])
   const removeItem = (index: number) => {
@@ -63,8 +119,13 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
     const number = 'FAC-' + Date.now().toString().slice(-8)
 
     const invoiceData = {
-      number, emitter, client: { ...client, type: clientType },
-      amount: total, items, status: 'sent', created_at: new Date().toISOString()
+      number,
+      emitter,
+      client: { ...client, type: clientType },
+      amount: total,
+      items,
+      status: 'sent',
+      created_at: new Date().toISOString()
     }
 
     if (demoMode && onDemoCreate) {
@@ -77,20 +138,18 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("Non connecté")
 
-      // === INSERT INVOICE ===
       const { data: inserted } = await supabase
         .from('invoices')
         .insert({ user_id: user.id, ...invoiceData })
         .select()
         .single()
 
-      // === GENERATE PDF ===
       const pdfBlob = await generatePDF(invoiceData)
       const fileName = `${number}.pdf`
+
       await serviceSupabase.storage.from('invoices').upload(fileName, pdfBlob, { upsert: true })
       const { data: { publicUrl } } = serviceSupabase.storage.from('invoices').getPublicUrl(fileName)
 
-      // === SEND EMAIL (relative URL = même projet) ===
       const res = await fetch('/api/send-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -104,15 +163,13 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
       })
 
       const result = await res.json()
-      console.log('📧 Email API response:', result)
-
       if (!res.ok) throw new Error(result.error || 'Failed to send email')
 
       alert(`✅ Facture ${number} envoyée à ${client.email}`)
       onSuccess?.(inserted)
 
     } catch (err: any) {
-      console.error('Erreur finale:', err)
+      console.error(err)
       alert('Erreur : ' + err.message)
     } finally {
       setLoading(false)
@@ -123,35 +180,40 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
     <div className="glass rounded-3xl p-8">
       <h2 className="text-3xl md:text-4xl font-bold mb-8 text-white tracking-tight">Nouvelle Facture</h2>
 
-      {/* ÉMETTEUR MODIFIABLE */}
+      {/* === LOGO ENTREPRISE === */}
+      <div className="mb-10">
+        <h3 className="text-lg font-semibold mb-4 text-white">Logo de votre entreprise</h3>
+        <label className="flex flex-col items-center justify-center w-full h-52 border-2 border-dashed border-white/30 rounded-3xl cursor-pointer hover:border-violet-500 transition-all group">
+          {logoPreview ? (
+            <div className="relative">
+              <img src={logoPreview} alt="logo" className="max-h-40 object-contain rounded-xl" />
+              <button
+                onClick={(e) => { e.preventDefault(); removeLogo() }}
+                className="absolute -top-3 -right-3 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          ) : (
+            <div className="text-center">
+              <Upload className="mx-auto text-5xl text-zinc-400 mb-3 group-hover:text-violet-400 transition" />
+              <p className="text-zinc-400">Cliquez pour uploader votre logo</p>
+              <p className="text-xs text-zinc-500 mt-1">PNG, JPG - Recommandé fond transparent</p>
+            </div>
+          )}
+          <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
+        </label>
+      </div>
+
+      {/* ÉMETTEUR */}
       <div className="mb-8">
         <h3 className="text-lg font-semibold mb-4 text-white">Émetteur (vous)</h3>
         <div className="grid grid-cols-1 gap-4">
-          <input 
-            value={emitter.name} 
-            onChange={(e) => updateEmitter('name', e.target.value)}
-            placeholder="Nom de votre entreprise / Nom complet" 
-            className="input" 
-          />
-          <input 
-            value={emitter.address} 
-            onChange={(e) => updateEmitter('address', e.target.value)}
-            placeholder="Adresse complète" 
-            className="input" 
-          />
+          <input value={emitter.name} onChange={(e) => updateEmitter('name', e.target.value)} placeholder="Nom entreprise / Nom complet" className="input" />
+          <input value={emitter.address} onChange={(e) => updateEmitter('address', e.target.value)} placeholder="Adresse complète" className="input" />
           <div className="grid grid-cols-2 gap-4">
-            <input 
-              value={emitter.siret} 
-              onChange={(e) => updateEmitter('siret', e.target.value)}
-              placeholder="SIRET" 
-              className="input" 
-            />
-            <input 
-              value={emitter.tva} 
-              onChange={(e) => updateEmitter('tva', e.target.value)}
-              placeholder="Numéro TVA" 
-              className="input" 
-            />
+            <input value={emitter.siret} onChange={(e) => updateEmitter('siret', e.target.value)} placeholder="SIRET" className="input" />
+            <input value={emitter.tva} onChange={(e) => updateEmitter('tva', e.target.value)} placeholder="Numéro TVA" className="input" />
           </div>
         </div>
       </div>
@@ -159,27 +221,26 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
       {/* CLIENT */}
       <div className="mb-8">
         <h3 className="text-lg font-semibold mb-4 text-white">Client</h3>
-        
         <div className="flex gap-3 mb-6">
           <button onClick={() => setClientType('particulier')} className={`flex-1 py-4 rounded-3xl font-medium transition ${clientType === 'particulier' ? 'bg-white text-black' : 'bg-zinc-800 text-white'}`}>Particulier</button>
           <button onClick={() => setClientType('pro')} className={`flex-1 py-4 rounded-3xl font-medium transition ${clientType === 'pro' ? 'bg-white text-black' : 'bg-zinc-800 text-white'}`}>Professionnel</button>
         </div>
 
         <div className="grid grid-cols-1 gap-4">
-          <input value={client.name} onChange={(e) => setClient({...client, name: e.target.value})} placeholder="Nom et Prénom *" className="input" />
-          <input value={client.email} onChange={(e) => setClient({...client, email: e.target.value})} placeholder="Email *" type="email" className="input" />
-          <input value={client.address} onChange={(e) => setClient({...client, address: e.target.value})} placeholder="Adresse complète *" className="input" />
+          <input value={client.name} onChange={(e) => setClient({ ...client, name: e.target.value })} placeholder="Nom et Prénom *" className="input" />
+          <input value={client.email} onChange={(e) => setClient({ ...client, email: e.target.value })} placeholder="Email *" type="email" className="input" />
+          <input value={client.address} onChange={(e) => setClient({ ...client, address: e.target.value })} placeholder="Adresse complète *" className="input" />
 
           {clientType === 'pro' && (
             <div className="grid grid-cols-2 gap-4">
-              <input value={client.siret} onChange={(e) => setClient({...client, siret: e.target.value})} placeholder="SIRET *" className="input" />
-              <input value={client.tva} onChange={(e) => setClient({...client, tva: e.target.value})} placeholder="Numéro TVA *" className="input" />
+              <input value={client.siret} onChange={(e) => setClient({ ...client, siret: e.target.value })} placeholder="SIRET *" className="input" />
+              <input value={client.tva} onChange={(e) => setClient({ ...client, tva: e.target.value })} placeholder="Numéro TVA *" className="input" />
             </div>
           )}
         </div>
       </div>
 
-      {/* Lignes prestations */}
+      {/* Prestations */}
       <div className="space-y-4 mb-8">
         {items.map((item, index) => (
           <div key={index} className="flex flex-col md:flex-row gap-4">
