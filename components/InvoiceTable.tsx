@@ -20,6 +20,7 @@ interface InvoiceTableProps {
   onRefresh: () => void
   demoMode?: boolean
   onDemoDelete?: (id: string) => void
+  onMarkAsPaid?: (id: string) => void          // ← AJOUTÉ
 }
 
 export function InvoiceTable({ 
@@ -27,7 +28,8 @@ export function InvoiceTable({
   loading, 
   onRefresh, 
   demoMode = false,
-  onDemoDelete 
+  onDemoDelete,
+  onMarkAsPaid 
 }: InvoiceTableProps) {
 
   const supabase = createClientComponentClient()
