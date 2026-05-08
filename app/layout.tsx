@@ -7,14 +7,12 @@ export const metadata: Metadata = {
   icons: { icon: '/favicon.ico' },
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr">
-      <body className="bg-zinc-950 text-white antialiased">{children}</body>
+    <html lang="fr" className="dark">
+      <body className="bg-zinc-950 text-white antialiased min-h-screen">
+        {children}
+      </body>
     </html>
   )
 }
