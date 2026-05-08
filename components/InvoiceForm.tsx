@@ -7,11 +7,7 @@ import { generatePDF } from '@/lib/pdf-template'
 import { sendInvoiceEmail } from '@/lib/email'
 import { Upload, X } from 'lucide-react'
 
-interface InvoiceItem {
-  description: string
-  quantity: number
-  price: number
-}
+interface InvoiceItem { description: string; quantity: number; price: number }
 
 interface InvoiceFormProps {
   onSuccess?: (invoice?: any) => void
@@ -42,7 +38,6 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
     process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!
   ), [])
 
-  // Charger données sauvegardées
   useEffect(() => {
     const saved = localStorage.getItem('invoiceEmitter')
     if (saved) {
@@ -58,14 +53,12 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
     localStorage.setItem('invoiceEmitter', JSON.stringify(newEmitter))
   }
 
-  // Upload Logo
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
     setLogoFile(file)
-    const previewUrl = URL.createObjectURL(file)
-    setLogoPreview(previewUrl)
+    setLogoPreview(URL.createObjectURL(file))
 
     const fileExt = file.name.split('.').pop()
     const fileName = `logos/${Date.now()}.${fileExt}`
@@ -74,10 +67,7 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
       .from('invoices')
       .upload(fileName, file, { upsert: true })
 
-    if (error) {
-      alert("Erreur lors de l'upload du logo")
-      return
-    }
+    if (error) return alert("Erreur upload logo")
 
     const { data: { publicUrl } } = serviceSupabase.storage
       .from('invoices')
@@ -96,7 +86,6 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
     localStorage.setItem('invoiceEmitter', JSON.stringify(newEmitter))
   }
 
-  // Client
   const [clientType, setClientType] = useState<'particulier' | 'pro'>('particulier')
   const [client, setClient] = useState({ name: "", email: "", address: "", siret: "", tva: "" })
 
@@ -113,111 +102,111 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
   }
 
   const handleSubmit = async () => {
-  setLoading(true)
+    setLoading(true)
 
-  const total = items.reduce((sum, i) => sum + i.quantity * i.price, 0)
-  const number = 'FAC-' + Date.now().toString().slice(-8)
+    const total = items.reduce((sum, i) => sum + i.quantity * i.price, 0)
+    const number = 'FAC-' + Date.now().toString().slice(-8)
 
-  const invoiceData = {
-    number,
-    emitter,
-    client: { ...client, type: clientType },
-    amount: total,
-    items,
-    status: 'sent',
-    created_at: new Date().toISOString()
-  }
+    const invoiceData = {
+      number,
+      emitter,
+      client: { ...client, type: clientType },
+      amount: total,
+      items,
+      status: 'sent',
+      created_at: new Date().toISOString()
+    }
 
-  try {
-    // ==================== MODE DÉMO ====================
-    if (demoMode && onDemoCreate) {
-      onDemoCreate(invoiceData)
+    try {
+      // ==================== MODE DÉMO ====================
+      if (demoMode && onDemoCreate) {
+        onDemoCreate(invoiceData)
 
-      // Génération PDF + Envoi email même en démo
-      const pdfBlob = await generatePDF(invoiceData, true) // true = demoMode
-      const pdfUrl = URL.createObjectURL(pdfBlob)
+        const pdfBlob = await generatePDF(invoiceData, true) // true = demo mode
+        const pdfUrl = URL.createObjectURL(pdfBlob)
 
-      if (client.email) {
-        await sendInvoiceEmail({
+        if (client.email) {
+          const res = await fetch('/api/send-email', {  // ← URL relative importante
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: client.email,
+              clientName: client.name,
+              invoiceNumber: number,
+              amount: total,
+              pdfUrl
+            })
+          })
+
+          console.log('Demo email response:', await res.json())
+          alert(`✅ Facture démo ${number} envoyée par email !`)
+        } else {
+          alert(`✅ Facture démo ${number} créée (email non envoyé)`)
+        }
+        setLoading(false)
+        return
+      }
+
+      // ==================== MODE NORMAL ====================
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error("Non connecté")
+
+      const { data: inserted } = await supabase
+        .from('invoices')
+        .insert({ user_id: user.id, ...invoiceData })
+        .select()
+        .single()
+
+      const pdfBlob = await generatePDF(invoiceData, false)
+      const fileName = `${number}.pdf`
+
+      await serviceSupabase.storage.from('invoices').upload(fileName, pdfBlob, { upsert: true })
+      const { data: { publicUrl } } = serviceSupabase.storage.from('invoices').getPublicUrl(fileName)
+
+      const res = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           to: client.email,
           clientName: client.name,
           invoiceNumber: number,
           amount: total,
-          pdfUrl
+          pdfUrl: publicUrl
         })
-        alert(`✅ Facture démo ${number} créée et envoyée par email !`)
-      } else {
-        alert(`✅ Facture démo ${number} créée (pas d'email car aucun client renseigné)`)
-      }
-
-      setLoading(false)
-      return
-    }
-
-    // ==================== MODE NORMAL ====================
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error("Non connecté")
-
-    const { data: inserted } = await supabase
-      .from('invoices')
-      .insert({ user_id: user.id, ...invoiceData })
-      .select()
-      .single()
-
-    const pdfBlob = await generatePDF(invoiceData, false)
-    const fileName = `${number}.pdf`
-
-    await serviceSupabase.storage.from('invoices').upload(fileName, pdfBlob, { upsert: true })
-    const { data: { publicUrl } } = serviceSupabase.storage.from('invoices').getPublicUrl(fileName)
-
-    const res = await fetch('/api/send-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        to: client.email,
-        clientName: client.name,
-        invoiceNumber: number,
-        amount: total,
-        pdfUrl: publicUrl
       })
-    })
 
-    if (!res.ok) throw new Error('Failed to send email')
+      if (!res.ok) throw new Error('Failed to send email')
 
-    alert(`✅ Facture ${number} envoyée à ${client.email}`)
-    onSuccess?.(inserted)
+      alert(`✅ Facture ${number} envoyée à ${client.email}`)
+      onSuccess?.(inserted)
 
-  } catch (err: any) {
-    console.error(err)
-    alert('Erreur : ' + err.message)
-  } finally {
-    setLoading(false)
+    } catch (err: any) {
+      console.error(err)
+      alert('Erreur : ' + err.message)
+    } finally {
+      setLoading(false)
+    }
   }
-}
 
   return (
     <div className="glass rounded-3xl p-8">
       <h2 className="text-3xl md:text-4xl font-bold mb-8 text-white tracking-tight">Nouvelle Facture</h2>
 
-      {/* === LOGO ENTREPRISE === */}
+      {/* Logo Upload */}
       <div className="mb-10">
         <h3 className="text-lg font-semibold mb-4 text-white">Logo de votre entreprise</h3>
         <label className="flex flex-col items-center justify-center w-full h-52 border-2 border-dashed border-white/30 rounded-3xl cursor-pointer hover:border-violet-500 transition-all group">
           {logoPreview ? (
             <div className="relative">
               <img src={logoPreview} alt="logo" className="max-h-40 object-contain rounded-xl" />
-              <button
-                onClick={(e) => { e.preventDefault(); removeLogo() }}
-                className="absolute -top-3 -right-3 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600"
-              >
+              <button onClick={removeLogo} className="absolute -top-3 -right-3 bg-red-500 text-white p-1.5 rounded-full">
                 <X size={18} />
               </button>
             </div>
           ) : (
             <div className="text-center">
-              <Upload className="mx-auto text-5xl text-zinc-400 mb-3 group-hover:text-violet-400 transition" />
-              <p className="text-zinc-400">Cliquez pour uploader votre logo</p>
-              <p className="text-xs text-zinc-500 mt-1">PNG, JPG - Recommandé fond transparent</p>
+              <Upload className="mx-auto text-5xl text-zinc-400 mb-3 group-hover:text-violet-400" />
+              <p className="text-zinc-400">Uploader votre logo</p>
             </div>
           )}
           <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" />
@@ -273,10 +262,8 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
         ))}
       </div>
 
-      <button type="button" onClick={addItem} className="text-violet-400 hover:text-violet-500 mb-6 text-lg">+ Ajouter une ligne</button>
-
       <button onClick={handleSubmit} disabled={loading} className="w-full btn-primary text-lg py-6">
-        {loading ? 'Création & Envoi en cours...' : demoMode ? 'Créer en Démo' : 'Créer & Envoyer la Facture'}
+        {loading ? 'Création & Envoi en cours...' : demoMode ? 'Créer & Envoyer en Démo' : 'Créer & Envoyer la Facture'}
       </button>
     </div>
   )
