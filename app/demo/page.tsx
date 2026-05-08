@@ -1,57 +1,56 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React from 'react'
 import Link from 'next/link'
 import { InvoiceForm } from '@/components/InvoiceForm'
 import { InvoiceTable } from '@/components/InvoiceTable'
 
 export default function DemoPage() {
-  const [remaining, setRemaining] = useState(5)
-  const [limitReached, setLimitReached] = useState(false)
-  const [invoices, setInvoices] = useState<any[]>([])
+  const [remaining, setRemaining] = React.useState(5)
+  const [limitReached, setLimitReached] = React.useState(false)
+  const [invoices, setInvoices] = React.useState<any[]>([])
 
-  // Charger l'état du compteur
   const loadUsage = async () => {
     try {
       const res = await fetch('/api/demo-limit')
       const data = await res.json()
-      setRemaining(data.remaining)
-      setLimitReached(data.limitReached)
+      setRemaining(data.remaining || 5)
+      setLimitReached(data.limitReached || false)
     } catch (e) {
-      console.error("Erreur chargement limite démo", e)
+      console.error('Erreur chargement limite démo:', e)
     }
   }
 
-  useEffect(() => {
+  React.useEffect(() => {
     loadUsage()
 
-    // Charger les factures sauvegardées en local
     const saved = localStorage.getItem('demoInvoices')
-    if (saved) setInvoices(JSON.parse(saved))
+    if (saved) {
+      setInvoices(JSON.parse(saved))
+    }
   }, [])
 
   const handleDemoAction = async (newInvoice: any) => {
-    // Décrémenter le compteur
     await fetch('/api/demo-limit', { method: 'POST' })
-    await loadUsage()   // Recharger le compteur
+    await loadUsage()
 
     if (newInvoice) {
       const invoiceWithId = {
         ...newInvoice,
         id: newInvoice.id || `demo-${Date.now()}-${Math.random().toString(36).slice(2)}`
       }
-      const updatedInvoices = [invoiceWithId, ...invoices]
-      setInvoices(updatedInvoices)
-      localStorage.setItem('demoInvoices', JSON.stringify(updatedInvoices))
+      const updated = [invoiceWithId, ...invoices]
+      setInvoices(updated)
+      localStorage.setItem('demoInvoices', JSON.stringify(updated))
     }
   }
 
   const handleMarkAsPaidDemo = (id: string) => {
-    const updatedInvoices = invoices.map(inv => 
+    const updated = invoices.map(inv =>
       inv.id === id ? { ...inv, status: 'paid' } : inv
     )
-    setInvoices(updatedInvoices)
-    localStorage.setItem('demoInvoices', JSON.stringify(updatedInvoices))
+    setInvoices(updated)
+    localStorage.setItem('demoInvoices', JSON.stringify(updated))
   }
 
   const handleDemoDelete = (id: string) => {
@@ -60,7 +59,7 @@ export default function DemoPage() {
     localStorage.setItem('demoInvoices', JSON.stringify(updated))
   }
 
-  // Page limite atteinte
+  // Limite atteinte
   if (limitReached) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-rose-950 to-violet-950 flex items-center justify-center p-6">
@@ -71,7 +70,7 @@ export default function DemoPage() {
             Tu as utilisé toutes tes démos gratuites.<br />
             Crée un compte pour continuer sans limite.
           </p>
-          <Link 
+          <Link
             href="/register"
             className="inline-block bg-white text-black px-12 py-5 rounded-3xl font-bold text-xl hover:scale-105 transition-all"
           >
@@ -85,6 +84,7 @@ export default function DemoPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-indigo-950 to-violet-950 text-white">
       <div className="max-w-6xl mx-auto px-6 py-12">
+        {/* Header */}
         <div className="flex justify-between items-center mb-12">
           <div>
             <h1 className="text-6xl font-bold tracking-tighter">Mode Démo</h1>
