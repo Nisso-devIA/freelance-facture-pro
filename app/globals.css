@@ -59,3 +59,12 @@
   60%  { transform: scale(1.15) rotate(-4deg); }
   80%  { transform: scale(1.05) rotate(4deg); }
 }
+
+/* Supprime les warnings React */
+* {
+  scrollbar-width: thin;
+}
+
+body {
+  overscroll-behavior: none;
+}
