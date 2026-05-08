@@ -113,68 +113,87 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
   }
 
   const handleSubmit = async () => {
-    setLoading(true)
+  setLoading(true)
 
-    const total = items.reduce((sum, i) => sum + i.quantity * i.price, 0)
-    const number = 'FAC-' + Date.now().toString().slice(-8)
+  const total = items.reduce((sum, i) => sum + i.quantity * i.price, 0)
+  const number = 'FAC-' + Date.now().toString().slice(-8)
 
-    const invoiceData = {
-      number,
-      emitter,
-      client: { ...client, type: clientType },
-      amount: total,
-      items,
-      status: 'sent',
-      created_at: new Date().toISOString()
-    }
+  const invoiceData = {
+    number,
+    emitter,
+    client: { ...client, type: clientType },
+    amount: total,
+    items,
+    status: 'sent',
+    created_at: new Date().toISOString()
+  }
 
+  try {
+    // ==================== MODE DÉMO ====================
     if (demoMode && onDemoCreate) {
       onDemoCreate(invoiceData)
-      setLoading(false)
-      return
-    }
 
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error("Non connecté")
+      // Génération PDF + Envoi email même en démo
+      const pdfBlob = await generatePDF(invoiceData, true) // true = demoMode
+      const pdfUrl = URL.createObjectURL(pdfBlob)
 
-      const { data: inserted } = await supabase
-        .from('invoices')
-        .insert({ user_id: user.id, ...invoiceData })
-        .select()
-        .single()
-
-      const pdfBlob = await generatePDF(invoiceData, demoMode)
-      const fileName = `${number}.pdf`
-
-      await serviceSupabase.storage.from('invoices').upload(fileName, pdfBlob, { upsert: true })
-      const { data: { publicUrl } } = serviceSupabase.storage.from('invoices').getPublicUrl(fileName)
-
-      const res = await fetch('/api/send-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      if (client.email) {
+        await sendInvoiceEmail({
           to: client.email,
           clientName: client.name,
           invoiceNumber: number,
           amount: total,
-          pdfUrl: publicUrl
+          pdfUrl
         })
-      })
+        alert(`✅ Facture démo ${number} créée et envoyée par email !`)
+      } else {
+        alert(`✅ Facture démo ${number} créée (pas d'email car aucun client renseigné)`)
+      }
 
-      const result = await res.json()
-      if (!res.ok) throw new Error(result.error || 'Failed to send email')
-
-      alert(`✅ Facture ${number} envoyée à ${client.email}`)
-      onSuccess?.(inserted)
-
-    } catch (err: any) {
-      console.error(err)
-      alert('Erreur : ' + err.message)
-    } finally {
       setLoading(false)
+      return
     }
+
+    // ==================== MODE NORMAL ====================
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error("Non connecté")
+
+    const { data: inserted } = await supabase
+      .from('invoices')
+      .insert({ user_id: user.id, ...invoiceData })
+      .select()
+      .single()
+
+    const pdfBlob = await generatePDF(invoiceData, false)
+    const fileName = `${number}.pdf`
+
+    await serviceSupabase.storage.from('invoices').upload(fileName, pdfBlob, { upsert: true })
+    const { data: { publicUrl } } = serviceSupabase.storage.from('invoices').getPublicUrl(fileName)
+
+    const res = await fetch('/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: client.email,
+        clientName: client.name,
+        invoiceNumber: number,
+        amount: total,
+        pdfUrl: publicUrl
+      })
+    })
+
+    if (!res.ok) throw new Error('Failed to send email')
+
+    alert(`✅ Facture ${number} envoyée à ${client.email}`)
+    onSuccess?.(inserted)
+
+  } catch (err: any) {
+    console.error(err)
+    alert('Erreur : ' + err.message)
+  } finally {
+    setLoading(false)
   }
+}
 
   return (
     <div className="glass rounded-3xl p-8">
