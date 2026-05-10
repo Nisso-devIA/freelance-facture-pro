@@ -5,7 +5,9 @@ import Stripe from 'stripe'
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
 export async function GET(req: Request) {
-  const supabase = createServerComponentClient()
+  // ← ATTENTION : await obligatoire ici
+  const supabase = await createServerComponentClient()
+
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
@@ -26,7 +28,7 @@ export async function GET(req: Request) {
     success_url: `${process.env.NEXT_PUBLIC_URL}/dashboard?success=true`,
     cancel_url: `${process.env.NEXT_PUBLIC_URL}/pricing`,
     metadata: {
-      user_id: user.id   // ← C’EST ÇA QUI MANQUAIT
+      user_id: user.id
     }
   })
 
