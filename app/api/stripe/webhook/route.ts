@@ -13,13 +13,14 @@ export async function POST(req: Request) {
   try {
     event = stripe.webhooks.constructEvent(body, signature, endpointSecret)
   } catch (err: any) {
-    return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 })
+    console.error('Webhook signature verification failed:', err.message)
+    return NextResponse.json({ error: 'Webhook Error' }, { status: 400 })
   }
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session
-    // Ici tu peux mettre à jour le statut utilisateur en "pro" dans ta table users
-    console.log('✅ Abonnement activé pour', session.customer)
+    console.log('✅ Abonnement activé pour client:', session.customer)
+    // TODO: Mettre à jour l'utilisateur en "pro" dans ta base (à faire plus tard)
   }
 
   return NextResponse.json({ received: true })
