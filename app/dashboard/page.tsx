@@ -13,10 +13,15 @@ export default function Dashboard() {
 
   const supabase = useMemo(() => createClientComponentClient(), [])
 
-  const fetchInvoices = useCallback(async () => {
+  const fetchUserAndInvoices = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
+    // Récupération du statut Pro depuis les metadata Stripe
+    const isProUser = user.user_metadata?.is_pro === true
+    setIsPro(isProUser)
+
+    // Récupération des factures
     const { data } = await supabase
       .from('invoices')
       .select('*')
@@ -27,13 +32,9 @@ export default function Dashboard() {
     setLoading(false)
   }, [supabase])
 
-  // TODO: Plus tard on récupérera le vrai statut Pro depuis Stripe
   useEffect(() => {
-    fetchInvoices()
-    
-    // Simulation temporaire (à remplacer par vraie vérification Stripe)
-    setIsPro(true) // Change en false si tu veux tester le bouton "Passer en Pro"
-  }, [fetchInvoices])
+    fetchUserAndInvoices()
+  }, [fetchUserAndInvoices])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-indigo-950 to-violet-950">
@@ -61,11 +62,11 @@ export default function Dashboard() {
           )}
         </div>
 
-        <InvoiceForm onSuccess={fetchInvoices} />
+        <InvoiceForm onSuccess={fetchUserAndInvoices} />
         <InvoiceTable 
           invoices={invoices} 
           loading={loading} 
-          onRefresh={fetchInvoices} 
+          onRefresh={fetchUserAndInvoices} 
         />
       </div>
     </div>
