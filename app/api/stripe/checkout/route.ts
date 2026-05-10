@@ -5,7 +5,7 @@ import Stripe from 'stripe'
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
 export async function GET(req: Request) {
-  // ← ATTENTION : await obligatoire ici
+  // IMPORTANT : await obligatoire ici
   const supabase = await createServerComponentClient()
 
   const { data: { user } } = await supabase.auth.getUser()
