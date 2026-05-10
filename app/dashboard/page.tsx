@@ -5,7 +5,6 @@ import { createClientComponentClient } from '@/lib/supabase'
 import { InvoiceForm } from '@/components/InvoiceForm'
 import { InvoiceTable } from '@/components/InvoiceTable'
 import Navbar from '@/components/Navbar'
-import { useSearchParams } from 'next/navigation'
 
 export default function Dashboard() {
   const [invoices, setInvoices] = useState<any[]>([])
@@ -13,17 +12,14 @@ export default function Dashboard() {
   const [isPro, setIsPro] = useState(false)
 
   const supabase = useMemo(() => createClientComponentClient(), [])
-  const searchParams = useSearchParams()
 
   const fetchUserAndInvoices = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    // Vérification du statut Pro depuis les metadata Stripe
+    // Vérification du statut Pro depuis Stripe metadata
     const isProUser = user.user_metadata?.is_pro === true
     setIsPro(isProUser)
-
-    console.log('🔍 Statut Pro détecté :', isProUser) // ← Debug pour voir dans la console
 
     // Récupération des factures
     const { data } = await supabase
@@ -38,12 +34,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchUserAndInvoices()
-
-    // Rafraîchissement automatique après retour du paiement Stripe
-    if (searchParams.get('success') === 'true') {
-      fetchUserAndInvoices()
-    }
-  }, [fetchUserAndInvoices, searchParams])
+  }, [fetchUserAndInvoices])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-indigo-950 to-violet-950">
