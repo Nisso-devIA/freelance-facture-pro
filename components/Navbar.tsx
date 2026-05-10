@@ -1,10 +1,11 @@
-﻿'use client'
+﻿'use client'   // ← AJOUTE ÇA EN PREMIÈRE LIGNE
 
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@/lib/supabase'
 import { LogOut } from 'lucide-react'
+import Link from 'next/link'
 import { useState, useEffect } from 'react'
+import { AuthChangeEvent, Session, Subscription } from '@supabase/supabase-js'
 
 export default function Navbar() {
   const router = useRouter()
@@ -15,18 +16,20 @@ export default function Navbar() {
   // Vérifier si l'utilisateur est connecté
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
       setUser(user)
       setLoading(false)
     }
     checkUser()
 
     // Écouter les changements de session
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null)
-    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    (event: AuthChangeEvent, session: Session | null) => {
+    setUser(session?.user || null)
+  }
+)
 
-    return () => subscription.unsubscribe()
+return () => subscription.unsubscribe()
   }, [supabase])
 
   const handleLogout = async () => {

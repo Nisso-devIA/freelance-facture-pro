@@ -1,12 +1,21 @@
-// lib/supabase.ts
+// lib/supabase.ts - Version Blackhat Singleton Ultime (SSR-safe)
 import { createBrowserClient } from '@supabase/ssr'
 
-// ==================== CLIENT SIDE ====================
+let browserClient: ReturnType<typeof createBrowserClient> | null = null
+
 export function createClientComponentClient() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  if (typeof window === 'undefined') {
+    console.warn('[Supabase] createClientComponentClient appelé côté serveur → retour null (safe)')
+    return null as any
+  }
+
+  if (!browserClient) {
+    browserClient = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+  }
+  return browserClient
 }
 
 // ==================== SERVER SIDE ONLY ====================
@@ -21,10 +30,7 @@ export async function createServerComponentClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        // TYPAGE EXPLICITE POUR TUER LE ROUGE
+        getAll() { return cookieStore.getAll() },
         setAll(cookiesToSet: any) {
           try {
             cookiesToSet.forEach((cookie: any) => {

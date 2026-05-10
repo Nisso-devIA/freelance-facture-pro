@@ -15,44 +15,13 @@ const styles = StyleSheet.create({
     borderBottom: '3px solid #8b5cf6',
     paddingBottom: 20 
   },
-  logoContainer: { 
-    width: 100, 
-    height: 100 
-  },
-  logo: { 
-    width: '100%', 
-    height: '100%', 
-    objectFit: 'contain' 
-  },
-  demoLogo: { 
-    width: '100%', 
-    height: '100%', 
-    objectFit: 'contain',
-    opacity: 0.65 
-  },
-  title: { 
-    fontSize: 28, 
-    fontWeight: 'bold', 
-    color: '#8b5cf6' 
-  },
-  invoiceInfo: { 
-    textAlign: 'right' 
-  },
-  section: { 
-    marginBottom: 25 
-  },
-  row: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    marginBottom: 8,
-    paddingBottom: 4,
-    borderBottom: '1px solid #e5e5e5'
-  },
-  total: { 
-    borderTop: '3px solid #8b5cf6', 
-    paddingTop: 15, 
-    marginTop: 25 
-  },
+  logoContainer: { width: 100, height: 100 },
+  logo: { width: '100%', height: '100%', objectFit: 'contain' },
+  demoLogo: { width: '100%', height: '100%', objectFit: 'contain', opacity: 0.65 },
+  title: { fontSize: 28, fontWeight: 'bold', color: '#8b5cf6' },
+  section: { marginBottom: 25 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8, paddingBottom: 4, borderBottom: '1px solid #e5e5e5' },
+  total: { borderTop: '3px solid #8b5cf6', paddingTop: 15, marginTop: 25 },
   watermark: { 
     position: 'absolute', 
     top: '42%', 
@@ -62,7 +31,6 @@ const styles = StyleSheet.create({
     color: '#8b5cf6', 
     opacity: 0.09, 
     fontWeight: 'bold',
-    zIndex: -1,
     textAlign: 'center',
     width: '100%'
   }
@@ -78,7 +46,7 @@ export const generatePDF = async (data: any, demoMode: boolean = false) => {
         {/* HEADER AVEC LOGO */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            {data.emitter.logoUrl ? (
+            {data?.emitter?.logoUrl ? (
               <Image 
                 src={data.emitter.logoUrl} 
                 style={demoMode ? styles.demoLogo : styles.logo} 
@@ -97,41 +65,44 @@ export const generatePDF = async (data: any, demoMode: boolean = false) => {
             )}
           </View>
 
-          {/* Info Facture */}
-          <View style={styles.invoiceInfo}>
+          <View style={{ textAlign: 'right' }}>
             <Text style={styles.title}>FACTURE</Text>
-            <Text style={{ fontSize: 18, fontWeight: 'bold', marginTop: 8 }}>{data.number}</Text>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', marginTop: 8 }}>{data?.number || 'FACTURE-PRO'}</Text>
             <Text style={{ marginTop: 4 }}>{new Date().toLocaleDateString('fr-FR')}</Text>
             {demoMode && <Text style={{ color: '#ef4444', marginTop: 4, fontSize: 13 }}>VERSION DÉMO</Text>}
           </View>
         </View>
 
-        {/* Émetteur & Client */}
+        {/* ÉMETTEUR & CLIENT */}
         <View style={{ flexDirection: 'row', gap: 50, marginBottom: 35 }}>
           <View style={{ flex: 1 }}>
             <Text style={{ fontWeight: 'bold', marginBottom: 10, color: '#8b5cf6', fontSize: 14 }}>ÉMETTEUR</Text>
-            <Text style={{ fontSize: 12 }}>{data.emitter.name}</Text>
-            <Text style={{ fontSize: 12 }}>{data.emitter.address}</Text>
-            <Text style={{ fontSize: 12 }}>SIRET : {data.emitter.siret}</Text>
-            <Text style={{ fontSize: 12 }}>TVA : {data.emitter.tva}</Text>
+            <Text>{data?.emitter?.name || 'Non renseigné'}</Text>
+            <Text>{data?.emitter?.address || ''}</Text>
+            <Text>SIRET : {data?.emitter?.siret || '—'}</Text>
+            <Text>TVA : {data?.emitter?.tva || '—'}</Text>
           </View>
 
           <View style={{ flex: 1 }}>
             <Text style={{ fontWeight: 'bold', marginBottom: 10, color: '#8b5cf6', fontSize: 14 }}>CLIENT</Text>
-            <Text style={{ fontSize: 12 }}>{data.client.name}</Text>
-            <Text style={{ fontSize: 12 }}>{data.client.address}</Text>
-            {data.client.siret && <Text style={{ fontSize: 12 }}>SIRET : {data.client.siret}</Text>}
+            <Text>{data?.client?.name || 'Non renseigné'}</Text>
+            <Text>{data?.client?.address || ''}</Text>
+            {data?.client?.siret && <Text>SIRET : {data.client.siret}</Text>}
           </View>
         </View>
 
-        {/* Prestations */}
+        {/* PRESTATIONS */}
         <View style={styles.section}>
           <Text style={{ fontWeight: 'bold', marginBottom: 12, fontSize: 14, color: '#8b5cf6' }}>PRESTATIONS</Text>
-          {data.items.map((item: any, i: number) => (
+          {(data?.items || []).map((item: any, i: number) => (
             <View key={i} style={styles.row}>
-              <Text style={{ flex: 2 }}>{item.description}</Text>
-              <Text style={{ textAlign: 'center', width: 80 }}>{item.quantity} × {item.price.toFixed(2)} €</Text>
-              <Text style={{ textAlign: 'right', width: 90 }}>{(item.quantity * item.price).toFixed(2)} €</Text>
+              <Text style={{ flex: 2 }}>{item?.description || ''}</Text>
+              <Text style={{ textAlign: 'center', width: 80 }}>
+                {(item?.quantity || 0)} × {(item?.price || 0).toFixed(2)} €
+              </Text>
+              <Text style={{ textAlign: 'right', width: 90 }}>
+                {((item?.quantity || 0) * (item?.price || 0)).toFixed(2)} €
+              </Text>
             </View>
           ))}
         </View>
@@ -141,13 +112,13 @@ export const generatePDF = async (data: any, demoMode: boolean = false) => {
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text style={{ fontSize: 16, fontWeight: 'bold' }}>Total TTC</Text>
             <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#8b5cf6' }}>
-              {data.amount.toFixed(2)} €
+              {(data?.amount || 0).toFixed(2)} €
             </Text>
           </View>
         </View>
 
         <Text style={{ marginTop: 60, textAlign: 'center', fontSize: 10, color: '#666' }}>
-          Merci pour votre confiance • Paiement sécurisé via Stripe disponible
+          Merci pour votre confiance • Facture Pro
         </Text>
       </Page>
     </Document>

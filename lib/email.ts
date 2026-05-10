@@ -1,68 +1,40 @@
 ﻿import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const resend = process.env.RESEND_API_KEY 
+  ? new Resend(process.env.RESEND_API_KEY) 
+  : null
 
-export async function sendInvoiceEmail({
-  to,
-  clientName,
-  invoiceNumber,
-  amount,
-  pdfUrl
-}: {
+export async function sendInvoiceEmail(data: {
   to: string
   clientName: string
   invoiceNumber: string
   amount: number
   pdfUrl: string
 }) {
+  if (!resend) {
+    console.warn('⚠️ RESEND_API_KEY absente - mode démo sans envoi email')
+    return { success: false, reason: 'no_api_key' }
+  }
+
   try {
-    const { data, error } = await resend.emails.send({
-      from: 'Facture Pro <factures@resend.dev>',
-      to,
-      subject: `Votre facture ${invoiceNumber} est prête`,
+    const { data: emailData, error } = await resend.emails.send({
+      from: 'Facture Pro <onboarding@resend.dev>',
+      to: data.to,
+      subject: `Votre facture ${data.invoiceNumber} est prête`,
       html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <style>
-            body { font-family: Arial, sans-serif; }
-            .button {
-              display: inline-block;
-              background: linear-gradient(to right, #8b5cf6, #a855f7);
-              color: white;
-              padding: 16px 32px;
-              text-decoration: none;
-              border-radius: 12px;
-              font-weight: bold;
-              margin: 20px 0;
-            }
-          </style>
-        </head>
-        <body style="margin:0;padding:40px;background:#f8fafc;">
-          <div style="max-width:600px;margin:0 auto;background:white;padding:40px;border-radius:16px;">
-            <h2 style="color:#8b5cf6;">Bonjour ${clientName},</h2>
-            <p style="font-size:16px;">Votre facture <strong>${invoiceNumber}</strong> d'un montant de <strong>${amount.toFixed(2)} €</strong> a été générée avec succès.</p>
-            
-            <a href="${pdfUrl}" 
-               target="_blank" 
-               class="button">
-              📄 Télécharger la facture PDF
-            </a>
-            
-            <p style="color:#666;margin-top:30px;">Merci pour votre confiance !<br>L'équipe Facture Pro</p>
-          </div>
-        </body>
-        </html>
-      `,
+        <h2>Bonjour ${data.clientName},</h2>
+        <p>Voici votre facture <strong>${data.invoiceNumber}</strong> (${data.amount.toFixed(2)} €)</p>
+        <a href="${data.pdfUrl}" style="background:#8b5cf6;color:white;padding:16px 32px;border-radius:12px;text-decoration:none;font-weight:bold;display:inline-block;margin:20px 0;">
+          📄 Télécharger la facture PDF
+        </a>
+        <p>Merci pour votre confiance !</p>
+      `
     })
 
     if (error) throw error
-
-    console.log('✅ Email envoyé avec bouton cliquable')
-    return data
-  } catch (error) {
-    console.error('Erreur email:', error)
-    throw error
+    return { success: true, data: emailData }
+  } catch (err) {
+    console.error('Resend error:', err)
+    return { success: false }
   }
 }

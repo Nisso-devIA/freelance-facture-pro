@@ -32,11 +32,14 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
     logoUrl: "" as string
   })
 
-  const supabase = createClientComponentClient()
-  const serviceSupabase = useMemo(() => createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!
-  ), [])
+const supabase = useMemo(() => {
+  return createClientComponentClient()
+}, [])
+
+const serviceSupabase = useMemo(() => createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!
+), [])
 
   useEffect(() => {
     const saved = localStorage.getItem('invoiceEmitter')
@@ -101,6 +104,7 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
     setItems(newItems)
   }
 
+  
   const handleSubmit = async () => {
     setLoading(true)
 
@@ -118,7 +122,6 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
     }
 
     try {
-      // ==================== MODE DÉMO ====================
       // ==================== MODE DÉMO ====================
 if (demoMode && onDemoCreate) {
   onDemoCreate(invoiceData)
