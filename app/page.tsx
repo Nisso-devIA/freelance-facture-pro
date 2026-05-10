@@ -10,6 +10,7 @@ export default function Home() {
   const router = useRouter()
   const supabase = createClientComponentClient()
 
+  // Redirection automatique si déjà connecté
   useEffect(() => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
@@ -63,10 +64,10 @@ export default function Home() {
             </div>
           </div>
 
-          {/* FACTURE TRÈS VISIBLE À DROITE */}
+          {/* FACTURE RÉALISTE À DROITE */}
           <div className="hidden md:block">
             <div className="bg-white rounded-3xl shadow-2xl overflow-hidden max-w-md mx-auto">
-              <div className="bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white px-8 py-6 flex justify-between">
+              <div className="bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white px-8 py-6 flex justify-between items-start">
                 <div>
                   <div className="text-2xl font-bold">Facture Pro</div>
                   <div className="text-sm opacity-90">Freelance Edition</div>
@@ -77,44 +78,40 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="p-8 text-zinc-900">
-                <div className="grid grid-cols-2 gap-8 mb-8">
-                  {/* Émetteur */}
-                  <div>
-                    <div className="text-xs uppercase text-zinc-500 mb-2">Émetteur</div>
-                    <div className="font-semibold">Alexandre Martin</div>
-                    <div className="text-sm">123 Rue du Code, 75002 Paris</div>
-                    <div className="text-sm">SIRET : 123 456 789 01234</div>
-                    <div className="text-sm">TVA : FR12 345678901</div>
-                  </div>
-
-                  {/* Client */}
-                  <div>
-                    <div className="text-xs uppercase text-zinc-500 mb-2">Client</div>
-                    <div className="font-semibold">Marie Dubois</div>
-                    <div className="text-sm">45 Avenue des Fleurs, 69003 Lyon</div>
-                  </div>
+              <div className="p-8 text-zinc-900 grid grid-cols-2 gap-8">
+                <div>
+                  <div className="text-xs uppercase text-zinc-500 mb-2">Émetteur</div>
+                  <div className="font-semibold">Alexandre Martin</div>
+                  <div className="text-sm">123 Rue du Code, 75002 Paris</div>
+                  <div className="text-sm">SIRET : 123 456 789 01234</div>
+                  <div className="text-sm">TVA : FR12 345678901</div>
                 </div>
 
-                {/* Prestations avec montants visibles */}
-                <div className="border-t border-b py-6 space-y-4 mb-6">
-                  <div className="flex justify-between text-zinc-900">
-                    <span>Développement site web</span>
-                    <span className="font-medium">1 200 €</span>
-                  </div>
-                  <div className="flex justify-between text-zinc-900">
-                    <span>Formation React (2h)</span>
-                    <span className="font-medium">280 €</span>
-                  </div>
+                <div>
+                  <div className="text-xs uppercase text-zinc-500 mb-2">Client</div>
+                  <div className="font-semibold">Marie Dubois</div>
+                  <div className="text-sm">45 Avenue des Fleurs, 69003 Lyon</div>
                 </div>
+              </div>
 
-                {/* Total + PAYÉ */}
-                <div className="flex justify-between items-baseline mb-6">
+              <div className="px-8 border-t border-b py-6 space-y-4">
+                <div className="flex justify-between text-zinc-900">
+                  <span>Développement site web</span>
+                  <span className="font-medium">1 200 €</span>
+                </div>
+                <div className="flex justify-between text-zinc-900">
+                  <span>Formation React (2h)</span>
+                  <span className="font-medium">280 €</span>
+                </div>
+              </div>
+
+              <div className="px-8 pt-6 pb-8">
+                <div className="flex justify-between items-baseline">
                   <span className="text-lg font-semibold text-zinc-900">Total TTC</span>
                   <span className="text-4xl font-bold text-zinc-900">1 480 €</span>
                 </div>
 
-                <div className="flex justify-end">
+                <div className="mt-8 flex justify-end">
                   <div className="inline-flex items-center gap-3 bg-emerald-500 text-white font-bold text-lg px-8 py-3 rounded-2xl shadow-lg shadow-emerald-500/30">
                     <span className="text-2xl">✅</span>
                     PAYÉ
