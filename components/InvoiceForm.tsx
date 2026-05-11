@@ -32,15 +32,41 @@ export function InvoiceForm({ onSuccess, demoMode = false, onDemoCreate }: Invoi
     logoUrl: "" as string
   })
 
-const supabase = useMemo(() => {
-  return createClientComponentClient()
-}, [])
+  const supabase = useMemo(() => createClientComponentClient(), [])
+  const serviceSupabase = useMemo(() => createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!
+  ), [])
 
-const serviceSupabase = useMemo(() => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!
-), [])
+  // === NOUVEAU : Statut Pro + compteur mensuel ===
+  const [isPro, setIsPro] = useState(false)
+  const [invoiceCountThisMonth, setInvoiceCountThisMonth] = useState(0)
 
+  useEffect(() => {
+    const checkStatus = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const isProUser = user.user_metadata?.is_pro === true
+      setIsPro(isProUser)
+
+      if (!isProUser) {
+        const now = new Date()
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+
+        const { count } = await supabase
+          .from('invoices')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .gte('created_at', firstDay)
+
+        setInvoiceCountThisMonth(count || 0)
+      }
+    }
+    checkStatus()
+  }, [supabase])
+
+  // Le reste de ton code (localStorage, logo, etc.)
   useEffect(() => {
     const saved = localStorage.getItem('invoiceEmitter')
     if (saved) {
@@ -104,9 +130,15 @@ const serviceSupabase = useMemo(() => createClient(
     setItems(newItems)
   }
 
-  
   const handleSubmit = async () => {
     setLoading(true)
+
+    // === LIMITATION POUR LES UTILISATEURS CONNECTÉS NON-PRO ===
+    if (!demoMode && !isPro && invoiceCountThisMonth >= 20) {
+      alert(`Vous avez atteint la limite de 20 factures ce mois-ci.\n\nPassez en Pro pour créer des factures illimitées.`)
+      setLoading(false)
+      return
+    }
 
     const total = items.reduce((sum, i) => sum + i.quantity * i.price, 0)
     const number = 'FAC-' + Date.now().toString().slice(-8)
@@ -123,44 +155,42 @@ const serviceSupabase = useMemo(() => createClient(
 
     try {
       // ==================== MODE DÉMO ====================
-if (demoMode && onDemoCreate) {
-  onDemoCreate(invoiceData)
+      if (demoMode && onDemoCreate) {
+        onDemoCreate(invoiceData)
 
-  const pdfBlob = await generatePDF(invoiceData, true)
-  
-  // Téléchargement direct
-  const url = URL.createObjectURL(pdfBlob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${invoiceData.number}.pdf`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
+        const pdfBlob = await generatePDF(invoiceData, true)
+        
+        const url = URL.createObjectURL(pdfBlob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `${invoiceData.number}.pdf`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
 
-  // Option email (si email renseigné)
-  if (client.email) {
-    try {
-      await sendInvoiceEmail({
-        to: client.email,
-        clientName: client.name,
-        invoiceNumber: number,
-        amount: total,
-        pdfUrl: url   // Ne marchera pas dans l'email, mais on garde pour log
-      })
-      alert(`✅ Facture démo ${number} téléchargée + email envoyé !`)
-    } catch (e) {
-      alert(`✅ Facture démo ${number} téléchargée (email non envoyé)`)
-    }
-  } else {
-    alert(`✅ Facture démo ${number} téléchargée avec succès !`)
-  }
+        if (client.email) {
+          try {
+            await sendInvoiceEmail({
+              to: client.email,
+              clientName: client.name,
+              invoiceNumber: number,
+              amount: total,
+              pdfUrl: url
+            })
+            alert(`✅ Facture démo ${number} téléchargée + email envoyé !`)
+          } catch (e) {
+            alert(`✅ Facture démo ${number} téléchargée (email non envoyé)`)
+          }
+        } else {
+          alert(`✅ Facture démo ${number} téléchargée avec succès !`)
+        }
 
-  setLoading(false)
-  return
-}
+        setLoading(false)
+        return
+      }
 
-      // ==================== MODE NORMAL ====================
+      // ==================== MODE NORMAL (connecté) ====================
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("Non connecté")
 
